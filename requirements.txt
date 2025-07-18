@@ -1,0 +1,13 @@
+git+https://github.com/openai/swarm.git
+streamlit 
+newspaper3k
+google-search-results==2.4.2
+lxml_html_clean
+dotenv
+pytest 
+pytest-mock 
+pytest-cov
+flake8
+black
+safety
+bandit
