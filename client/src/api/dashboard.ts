@@ -1,4 +1,5 @@
 import api from './api';
+import { parseMarketDeepDive } from '@/types/marketDeepDive';
 
 interface NewsBriefSource {
   title: string;
@@ -56,6 +57,7 @@ export const getDashboardData = async () => {
     // This is the adapter logic. It transforms the single backend response
     // into the five separate data structures the frontend components expect.
     const transformedData = {
+      marketDeepDive: parseMarketDeepDive(pulseData.market_deep_dive),
       github: {
         languages: pulseData.github_language_distribution.labels.map((label: string, index: number) => ({
           name: label,
