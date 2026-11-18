@@ -1,5 +1,41 @@
 import api from './api';
 
+interface NewsBriefSource {
+  title: string;
+  source: string;
+  url: string;
+}
+
+export interface NewsBriefStory {
+  title: string;
+  summary: string;
+  sources: NewsBriefSource[];
+}
+
+function getNewsBriefSources(value: unknown): NewsBriefSource[] {
+  if (!Array.isArray(value)) return [];
+
+  const sources = new Map<string, NewsBriefSource>();
+  for (const article of value) {
+    if (typeof article?.title !== 'string' || !article.title.trim() || typeof article?.url !== 'string') continue;
+
+    try {
+      const url = new URL(article.url);
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') continue;
+      if (url.username || url.password || sources.has(url.href)) continue;
+      sources.set(url.href, {
+        title: article.title.trim(),
+        source: typeof article.source === 'string' ? article.source.trim() : '',
+        url: url.href,
+      });
+    } catch {
+      // Skip malformed links without hiding the story.
+    }
+  }
+
+  return [...sources.values()];
+}
+
 export const getDashboardData = async () => {
   try {
     const response = await api.get('/api/tech-pulse/latest');
@@ -32,13 +68,14 @@ export const getDashboardData = async () => {
         product_hunt_tag_connections: pulseData.product_hunt_tag_connections,
       },
       news: {
-        hot_topics: pulseData.news_word_cloud.hot_topics.map((topic: any) => ({
+        hot_topics: pulseData.news_word_cloud.hot_topics.map((topic: {
+          topic: string;
+          summary: string;
+          sources?: unknown;
+        }): NewsBriefStory => ({
           title: topic.topic,
-          url: '#',
-          source: 'Hey Signal',
-          // Use the single, validated, and formatted timestamp for all items
-          publishedAt: isValidDate ? formattedTimestamp : new Date().toISOString(),
           summary: topic.summary,
+          sources: getNewsBriefSources(topic.sources),
         })),
         created_at: isValidDate ? formattedTimestamp : new Date().toISOString(),
       },

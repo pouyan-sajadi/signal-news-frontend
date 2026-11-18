@@ -1,28 +1,51 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Badge } from '@/components/ui/badge'
-import { Newspaper, Clock, ChevronDown, ChevronUp } from 'lucide-react'
-import { format, formatDistanceToNow } from 'date-fns'
+import { Newspaper, ChevronDown, ChevronUp } from 'lucide-react'
+import { format } from 'date-fns'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import type { NewsBriefStory } from '@/api/dashboard'
 
 interface DailyNewsBriefProps {
   data: {
-    hot_topics: Array<{
-      title: string
-      url: string
-      source: string
-      publishedAt: string
-      summary: string
-    }>,
-    created_at: string // Add created_at to the data interface
+    hot_topics: NewsBriefStory[]
+    created_at: string
   } | null
 }
 
+function NewsBriefStoryCard({ story, onOpen }: { story: NewsBriefStory; onOpen: () => void }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const isTruncated = story.summary.length > 80
+  const displayedSummary = isExpanded || !isTruncated
+    ? story.summary
+    : story.summary.substring(0, 80) + '...'
+
+  return (
+    <div className="group p-4 rounded-lg bg-white/50 hover:bg-white/80 transition-all duration-200 border border-gray-100 hover:border-gray-200">
+      <h3 className="mb-2 font-semibold text-gray-900 text-sm leading-tight">
+        <button type="button" aria-haspopup="dialog" className="text-left hover:underline" onClick={onOpen}>
+          {story.title}
+        </button>
+      </h3>
+      <p className="text-xs text-gray-600 mb-2 leading-relaxed">{displayedSummary}</p>
+      {isTruncated && (
+        <button
+          type="button"
+          aria-expanded={isExpanded}
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center text-blue-600 hover:text-blue-800 text-xs font-medium"
+        >
+          {isExpanded ? 'Show Less' : 'Read More'}
+          {isExpanded ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export function DailyNewsBrief({ data }: DailyNewsBriefProps) {
+  const [selectedStory, setSelectedStory] = useState<NewsBriefStory | null>(null)
   if (!data) return null
-  const [selectedNewsItem, setSelectedNewsItem] = useState<any>(null);
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp); // This is now correctly parsed as UTC
@@ -67,73 +90,55 @@ export function DailyNewsBrief({ data }: DailyNewsBriefProps) {
         <CardContent className="pt-1 h-[calc(100%-120px)]">
           <ScrollArea className="h-full pr-2">
             <div className="space-y-4">
-              {data.hot_topics.map((topic, index) => {
-                const [isExpanded, setIsExpanded] = useState(false);
-                const TRUNCATE_LENGTH = 80; // Adjusted for compactness
-                const isTruncated = topic.summary.length > TRUNCATE_LENGTH;
-                const displayedSummary = isExpanded || !isTruncated
-                  ? topic.summary
-                  : topic.summary.substring(0, TRUNCATE_LENGTH) + '...';
-
-                return (
-                  <div
-                    key={index}
-                    className="group p-4 rounded-lg bg-white/50 hover:bg-white/80 transition-all duration-200 border border-gray-100 hover:border-gray-200"
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <h3
-                        className="font-semibold text-gray-900 text-sm leading-tight cursor-pointer"
-                        onClick={() => setSelectedNewsItem(topic)}
-                      >
-                        {topic.title}
-                      </h3>
-                    </div>
-                    
-                    <p className="text-xs text-gray-600 mb-2 leading-relaxed">
-                      {displayedSummary}
-                    </p>
-                    
-                    {isTruncated && (
-                      <button
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        className="flex items-center text-blue-600 hover:text-blue-800 text-xs font-medium focus:outline-none"
-                      >
-                        {isExpanded ? 'Show Less' : 'Read More'}
-                        {isExpanded ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
-                      </button>
-                    )}
-
-                    <div className="flex items-center justify-between mt-2">
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <Clock className="h-3 w-3" />
-                        {formatTimestamp(topic.publishedAt)}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {data.hot_topics.length === 0 && (
+                <p className="text-sm text-muted-foreground">No stories available for this brief.</p>
+              )}
+              {data.hot_topics.map((story, index) => (
+                <NewsBriefStoryCard
+                  key={`${story.title}-${index}`}
+                  story={story}
+                  onOpen={() => setSelectedStory(story)}
+                />
+              ))}
             </div>
           </ScrollArea>
         </CardContent>
       </Card>
-      <Dialog open={!!selectedNewsItem} onOpenChange={() => setSelectedNewsItem(null)}>
+      <Dialog open={!!selectedStory} onOpenChange={(open) => !open && setSelectedStory(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedNewsItem?.title}</DialogTitle>
+            <DialogTitle>{selectedStory?.title}</DialogTitle>
             <DialogDescription>
-              Source: {selectedNewsItem?.source} | Published: {selectedNewsItem?.publishedAt ? format(new Date(selectedNewsItem.publishedAt), "MMM dd, yyyy HH:mm") : 'N/A'}
+              Brief generated {formatTimestamp(data.created_at)}
             </DialogDescription>
           </DialogHeader>
-          <div className="mt-4">
-            <p className="text-sm text-gray-700 leading-relaxed">{selectedNewsItem?.summary}</p>
-            {selectedNewsItem?.url && (
-              <Button asChild className="mt-4">
-                <a href={selectedNewsItem.url} target="_blank" rel="noopener noreferrer">
-                  Read Full Article
-                </a>
-              </Button>
-            )}
-          </div>
+          {selectedStory && (
+            <div className="space-y-4">
+              <p className="text-sm leading-relaxed">{selectedStory.summary}</p>
+              {selectedStory.sources.length > 0 ? (
+                <section>
+                  <h3 className="text-sm font-semibold">Original articles</h3>
+                  <ul className="mt-2 space-y-2">
+                    {selectedStory.sources.map((article) => (
+                      <li key={article.url} className="text-sm">
+                        <a
+                          href={article.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline underline-offset-4"
+                        >
+                          {article.title}
+                        </a>
+                        {article.source && <p className="text-xs text-muted-foreground">{article.source}</p>}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : (
+                <p className="text-sm text-muted-foreground">Source links are unavailable for this story.</p>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
