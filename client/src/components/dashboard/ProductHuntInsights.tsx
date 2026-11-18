@@ -1,50 +1,67 @@
+import { Component, type ComponentProps, type PropsWithChildren } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Rocket } from 'lucide-react'
 import { ProductHuntSankeyChart } from '@/components/charts/ProductHuntSankeyChart'
 
+type SankeyData = ComponentProps<typeof ProductHuntSankeyChart>['data'];
+
 interface ProductHuntInsightsProps {
   data: {
-    product_hunt_tag_connections: {
-      product_hunt_tag_connections: {
-        nodes: Array<{ id: string }>;
-        links: Array<{ source: string; target: string; value: number }>;
-      } | null;
-    } | null;
+    product_hunt_tag_connections: SankeyData | null;
   } | null;
 }
 
-export function ProductHuntInsights({ data }: ProductHuntInsightsProps) {
-  
-  if (!data || !data.product_hunt_tag_connections) {
-    return (
-      <Card className="h-full bg-white/70 backdrop-blur-sm border-0 shadow-xl flex items-center justify-center">
-        <p className="text-muted-foreground">No Product Hunt data available.</p>
-      </Card>
-    );
+function ProductHuntFallback({ message }: { message: string }) {
+  return (
+    <Card className="h-full bg-white/70 backdrop-blur-sm border-0 shadow-xl flex items-center justify-center">
+      <p className="text-muted-foreground">{message}</p>
+    </Card>
+  );
+}
+
+class ProductHuntErrorBoundary extends Component<PropsWithChildren, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
   }
 
-  const sankeyData = data.product_hunt_tag_connections;
+  render() {
+    if (this.state.hasError) {
+      return <ProductHuntFallback message="Product Hunt chart is unavailable." />;
+    }
 
-  if (!sankeyData.links || sankeyData.links.length === 0) {
-    return (
-      <Card className="h-full bg-white/70 backdrop-blur-sm border-0 shadow-xl flex items-center justify-center">
-        <p className="text-muted-foreground">No Product Hunt connections to display.</p>
-      </Card>
-    );
+    return this.props.children;
+  }
+}
+
+function ProductHuntInsightsContent({ data }: ProductHuntInsightsProps) {
+  const sankeyData = data?.product_hunt_tag_connections;
+  if (!sankeyData || !Array.isArray(sankeyData.nodes) || !Array.isArray(sankeyData.links)) {
+    return <ProductHuntFallback message="No Product Hunt data available." />;
   }
 
-  const nodesInLinks = new Set();
-  sankeyData.links.forEach(link => {
-    nodesInLinks.add(link.source);
-    nodesInLinks.add(link.target);
-  });
+  const nodesById = new Map<string, SankeyData['nodes'][number]>();
+  for (const node of sankeyData.nodes) {
+    if (typeof node?.id === 'string' && node.id.length > 0) {
+      nodesById.set(node.id, node);
+    }
+  }
 
-  const filteredNodes = sankeyData.nodes.filter(node => nodesInLinks.has(node.id));
+  const links = sankeyData.links.filter(link =>
+    link &&
+    nodesById.has(link.source) &&
+    nodesById.has(link.target) &&
+    link.source !== link.target &&
+    Number.isFinite(link.value) &&
+    link.value > 0
+  );
+  if (links.length === 0) {
+    return <ProductHuntFallback message="No Product Hunt connections to display." />;
+  }
 
-  const filteredSankeyData = {
-    nodes: filteredNodes,
-    links: sankeyData.links
-  };
+  const linkedIds = new Set(links.flatMap(({ source, target }) => [source, target]));
+  const nodes = [...nodesById.values()].filter(node => linkedIds.has(node.id));
 
   return (
     <Card className="h-full bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
@@ -58,8 +75,16 @@ export function ProductHuntInsights({ data }: ProductHuntInsightsProps) {
         <p className="text-sm text-gray-600">Which products are catching customers’ attention?</p>
       </CardHeader>
       <CardContent className="pt-1 h-[calc(100%-80px)]">
-        <ProductHuntSankeyChart data={filteredSankeyData} />
+        <ProductHuntSankeyChart data={{ nodes, links }} />
       </CardContent>
     </Card>
+  );
+}
+
+export function ProductHuntInsights(props: ProductHuntInsightsProps) {
+  return (
+    <ProductHuntErrorBoundary>
+      <ProductHuntInsightsContent {...props} />
+    </ProductHuntErrorBoundary>
   );
 }
