@@ -1,4 +1,4 @@
-import { ArrowUpRight, Radio } from 'lucide-react'
+import { Radio } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { MarketDeepDive, MarketSource } from '@/types/marketDeepDive'
@@ -9,33 +9,34 @@ const horizonLabels = {
   counter: 'What could change this',
 } as const
 
-function SourceLinks({ ids, sources }: { ids: string[]; sources: Map<string, MarketSource> }) {
+type NumberedSource = MarketSource & { number: number }
+
+function InlineCitations({ ids, sources }: { ids: string[]; sources: Map<string, NumberedSource> }) {
   return (
-    <ul aria-label="Sources" className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
-      {ids.map(id => {
+    <sup className="ml-1 inline-flex gap-1 whitespace-nowrap text-xs">
+      {[...new Set(ids)].map(id => {
         const source = sources.get(id)
         if (!source) return null
         return (
-          <li key={id}>
-            <a
-              href={source.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`${source.title} · ${source.publisher}`}
-              className="inline-flex items-center gap-1 font-medium text-indigo-700 underline-offset-2 hover:underline dark:text-indigo-300"
-            >
-              {source.publisher}
-              <ArrowUpRight className="h-3 w-3 shrink-0" aria-hidden="true" />
-            </a>
-          </li>
+          <a
+            key={id}
+            href={source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Source ${source.number}: ${source.title}`}
+            title={source.title}
+            className="font-medium text-indigo-700 underline underline-offset-2 dark:text-indigo-300"
+          >
+            {source.number}
+          </a>
         )
       })}
-    </ul>
+    </sup>
   )
 }
 
 export function MarketDeepDiveCard({ brief }: { brief: MarketDeepDive }) {
-  const sources = new Map(brief.sources.map(source => [source.id, source]))
+  const sources = new Map(brief.sources.map((source, index) => [source.id, { ...source, number: index + 1 }]))
   const sections = [
     { id: 'story', label: 'The story', points: brief.signals },
     { id: 'impact', label: 'Who’s affected', points: brief.impact },
@@ -50,8 +51,10 @@ export function MarketDeepDiveCard({ brief }: { brief: MarketDeepDive }) {
           Market deep dive
         </p>
         <h2 className="mt-2 max-w-3xl text-2xl font-bold tracking-tight sm:text-3xl">{brief.headline}</h2>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-700 sm:text-base dark:text-slate-200">{brief.summary}</p>
-        <SourceLinks ids={brief.summary_source_ids} sources={sources} />
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-700 sm:text-base dark:text-slate-200">
+          {brief.summary}
+          <InlineCitations ids={brief.summary_source_ids} sources={sources} />
+        </p>
       </header>
       <Tabs defaultValue="story" className="px-5 pb-5 pt-3 sm:px-7">
         <TabsList aria-label="Read the market deep dive" className="h-auto max-w-full flex-wrap justify-start">
@@ -70,28 +73,15 @@ export function MarketDeepDiveCard({ brief }: { brief: MarketDeepDive }) {
                     </p>
                   )}
                   <h3 className="text-sm font-semibold">{point.label}</h3>
-                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{point.text}</p>
-                  <SourceLinks ids={point.source_ids} sources={sources} />
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    {point.text}
+                    <InlineCitations ids={point.source_ids} sources={sources} />
+                  </p>
                 </section>
               ))}
             </div>
           </TabsContent>
         ))}
-        <details className="mt-4 border-t border-border pt-3">
-          <summary className="text-sm font-medium">Sources and research</summary>
-          <ul className="mt-2 space-y-2 text-sm">
-            {brief.sources.map(source => (
-              <li key={source.id} className="break-words">
-                <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-indigo-700 underline underline-offset-2 dark:text-indigo-300">
-                  {source.title}
-                </a>
-                <span className="block text-xs text-muted-foreground">
-                  {source.publisher} · {source.kind === 'original' ? 'News coverage' : 'Research finding'}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </details>
       </Tabs>
     </Card>
   )
