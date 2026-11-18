@@ -6,6 +6,7 @@ import { ProductHuntInsights } from '@/components/dashboard/ProductHuntInsights'
 import { DailyNewsBrief } from '@/components/dashboard/DailyNewsBrief'
 import { TechZeitgeist } from '@/components/dashboard/TechZeitgeist'
 import { MarketPredictions } from '@/components/dashboard/MarketPredictions'
+import { MarketDeepDiveCard } from '@/components/dashboard/MarketDeepDiveCard'
 import { getDashboardData } from '@/api/dashboard'
 import { useToast } from '@/hooks/useToast'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -18,6 +19,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 export function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>({
+    marketDeepDive: null,
     github: null,
     productHunt: null,
     news: null,
@@ -129,6 +131,8 @@ export function Dashboard() {
             </div>
           )}
         </div>
+
+        {data.marketDeepDive && <MarketDeepDiveCard brief={data.marketDeepDive} />}
 
         {/* Dashboard Grid */}
         <TooltipProvider delayDuration={100}>
