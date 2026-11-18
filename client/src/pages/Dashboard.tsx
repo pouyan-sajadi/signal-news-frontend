@@ -5,6 +5,7 @@ import { GitHubTrending } from '@/components/dashboard/GitHubTrending'
 import { ProductHuntInsights } from '@/components/dashboard/ProductHuntInsights'
 import { DailyNewsBrief } from '@/components/dashboard/DailyNewsBrief'
 import { TechZeitgeist } from '@/components/dashboard/TechZeitgeist'
+import { WeeklyTopicTrends } from '@/components/dashboard/WeeklyTopicTrends'
 import { MarketPredictions } from '@/components/dashboard/MarketPredictions'
 import { getDashboardData } from '@/api/dashboard'
 import { useToast } from '@/hooks/useToast'
@@ -159,6 +160,7 @@ export function Dashboard() {
             </div>
           </div>
         </TooltipProvider>
+        <WeeklyTopicTrends />
       </div>
     </div>
   )

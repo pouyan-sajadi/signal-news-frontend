@@ -1,4 +1,5 @@
 import api from './api';
+import { z } from 'zod';
 
 interface NewsBriefSource {
   title: string;
@@ -10,6 +11,27 @@ export interface NewsBriefStory {
   title: string;
   summary: string;
   sources: NewsBriefSource[];
+}
+
+const rankedTopicSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  rank: z.number().int().min(1).max(10),
+});
+const topicRankDaySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(
+    date => Number.isFinite(Date.parse(`${date}T00:00:00Z`))
+  ),
+  topics: z.array(rankedTopicSchema).min(1).max(10).nullable(),
+});
+const topicHistorySchema = z.object({ days: z.array(topicRankDaySchema).length(7) });
+
+export type RankedTopic = z.infer<typeof rankedTopicSchema>;
+export type TopicRankDay = z.infer<typeof topicRankDaySchema>;
+
+export async function getTopicRankHistory(signal: AbortSignal): Promise<TopicRankDay[]> {
+  const response = await api.get('/api/tech-pulse/trends', { signal, timeout: 15000 });
+  return topicHistorySchema.parse(response.data).days;
 }
 
 function getNewsBriefSources(value: unknown): NewsBriefSource[] {
@@ -82,8 +104,7 @@ export const getDashboardData = async () => {
       keywords: {
         keywords: pulseData.news_word_cloud.keywords.map((keyword: any) => ({
           word: keyword.text,
-          frequency: keyword.value,
-          trend: 'up', // Mocked data
+          score: keyword.value,
           desc: keyword.desc,
         })),
       },
