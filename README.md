@@ -25,7 +25,7 @@ The Vite development server uses the [Nov 18, 2026 fixture](client/src/data/puls
 
 ## Create a report
 
-Enter a topic and optionally choose a focus, depth, and tone. The [report client](client/src/api/reports.ts) starts a job with `POST /process_news`, subscribes to progress at `/ws/status/:job_id`, and opens the finished report at `/report/:id`. The report page renders the result from Markdown and lets you copy the report link or export a PDF.
+Enter a topic and optionally choose a focus, depth, and tone. The [report client](client/src/api/reports.ts) starts a job with `POST /process_news`, checks `GET /report-jobs/:job_id` for progress and results, and opens the finished report at `/report/:id`. The job keeps running on the backend while the user switches tabs. The browser can resume checking after a brief connection loss or a reload in the same tab. The report page renders the result from Markdown and lets you copy the report link or export a PDF.
 
 Signed-in users authenticate with Google through Supabase. The [history client](client/src/api/history.ts) saves their reports through the backend. Guests can generate reports and reopen them from history in the same browser session. Opening a copied link still requires access through the signed-in account or the original guest session.
 
@@ -47,7 +47,7 @@ VITE_API_BASE_URL=http://127.0.0.1:8000
 VITE_BACKEND_URL=http://127.0.0.1:8000
 ```
 
-`VITE_API_BASE_URL` is the base for relative requests such as the live dashboard endpoint. `VITE_BACKEND_URL` is used for report and history requests and the report progress WebSocket. Set both to your [backend](https://github.com/pouyan-sajadi/signal-news-backend) when running the full flow. The local dashboard fixture works without a running FastAPI server.
+`VITE_API_BASE_URL` is the base for relative requests such as the live dashboard endpoint. `VITE_BACKEND_URL` is used for report status and history requests. Set both to your [backend](https://github.com/pouyan-sajadi/signal-news-backend) when running the full flow. The local dashboard fixture works without a running FastAPI server.
 
 ```sh
 npm run dev

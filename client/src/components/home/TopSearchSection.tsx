@@ -3,7 +3,7 @@ import { ReportPreferences } from "../../pages/HomePage";
 import { Card } from "../ui/card";
 import { Progress } from "../ui/progress";
 import { Button } from "../ui/button";
-import { X, Search, BarChart3, Target, Brain, Edit3 } from "lucide-react";
+import { Search, BarChart3, Target, Brain, Edit3 } from "lucide-react";
 
 interface TopSearchSectionProps {
   topic: string;
@@ -11,12 +11,14 @@ interface TopSearchSectionProps {
   preferences: ReportPreferences;
   setPreferences: (preferences: ReportPreferences) => void;
   isGenerating: boolean;
+  isStarting: boolean;
   handleGenerateReport: () => void;
-  processingStep: string;
+  searchError: string;
+  connectionInterrupted: boolean;
   progress: number;
   currentStepIndex: number;
   refinedTopic: string;
-  handleCancelGeneration: () => void;
+  onStopWaiting: () => void;
 }
 
 export function TopSearchSection({
@@ -25,47 +27,49 @@ export function TopSearchSection({
   preferences,
   setPreferences,
   isGenerating,
+  isStarting,
   handleGenerateReport,
-  processingStep,
+  searchError,
+  connectionInterrupted,
   progress,
   currentStepIndex,
   refinedTopic,
-  handleCancelGeneration,
+  onStopWaiting,
 }: TopSearchSectionProps) {
   const steps = [
     {
       id: "search",
       icon: <Search className="h-4 w-4" />,
-      title: "Search Phase",
-      description: "Refining search query and finding relevant articles",
+      title: "Find coverage",
+      description: "Look for recent articles on your topic",
       color: "text-blue-500"
     },
     {
       id: "profiling",
       icon: <BarChart3 className="h-4 w-4" />,
-      title: "Profiling Phase",
-      description: "Analyzing article relevance and quality",
+      title: "Review sources",
+      description: "Check which articles are relevant",
       color: "text-green-500"
     },
     {
       id: "selection",
       icon: <Target className="h-4 w-4" />,
-      title: "Selection Phase",
-      description: "Selecting the best sources for analysis",
+      title: "Choose evidence",
+      description: "Select sources with useful perspectives",
       color: "text-orange-500"
     },
     {
       id: "synthesis",
       icon: <Brain className="h-4 w-4" />,
-      title: "Synthesis Phase",
-      description: "Generating comprehensive analysis",
+      title: "Connect the findings",
+      description: "Compare what the sources say",
       color: "text-purple-500"
     },
     {
       id: "editing",
       icon: <Edit3 className="h-4 w-4" />,
-      title: "Editing Phase",
-      description: "Polishing final report",
+      title: "Write your report",
+      description: "Pull the findings into a clear report",
       color: "text-pink-500"
     }
   ]
@@ -74,6 +78,11 @@ export function TopSearchSection({
     <section id="top-search-section" className="search-section" tabIndex={-1} aria-labelledby="report-entry-title">
       <div className="search-intro"><h2 id="report-entry-title">Create a report</h2></div>
       <div className="search-form-wrap">
+        {searchError && (
+          <p role="alert" className="mb-3 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-foreground">
+            {searchError}
+          </p>
+        )}
         {!isGenerating ? (
           <TopicInput
             value={topic}
@@ -89,14 +98,14 @@ export function TopSearchSection({
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-xl font-bold">Generating Report</h3>
+                  <h3 className="text-xl font-bold">Creating your report</h3>
                   <p className="text-muted-foreground mt-1">
                     Topic: <span className="font-medium">{refinedTopic || topic}</span>
                   </p>
                 </div>
-                <Button variant="ghost" size="sm" onClick={handleCancelGeneration}>
-                  <X className="h-4 w-4" />
-                </Button>
+                {!isStarting && (
+                  <Button variant="ghost" size="sm" onClick={onStopWaiting}>Stop waiting</Button>
+                )}
               </div>
 
               {/* Progress Bar */}
@@ -154,8 +163,12 @@ export function TopSearchSection({
 
               {/* Current Status */}
               <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <p className="text-sm text-muted-foreground">
-                  {processingStep || "Initializing..."}
+                <p role="status" className="text-sm text-muted-foreground">
+                  {isStarting
+                    ? "Starting your report…"
+                    : connectionInterrupted
+                      ? "Connection interrupted. We’ll check for your report again shortly."
+                      : "You can switch tabs while your report runs."}
                 </p>
               </div>
             </div>

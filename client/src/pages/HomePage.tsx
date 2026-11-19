@@ -1,13 +1,12 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate, useOutletContext, useLocation, useNavigationType } from "react-router-dom"
 import { Dashboard } from "./Dashboard"
 import { HeroSection } from "../components/home/HeroSection"
 import { TopSearchSection } from "../components/home/TopSearchSection";
 
-import { generateReport } from "../api/reports"
-import { useToast } from "../hooks/useToast"
-import { Search, BarChart3, Target, Brain, Edit3 } from "lucide-react"
-import { Report } from "../components/home/ReportHistory";
+import { reportSteps, ReportSearchError, startReport, waitForReport } from "../api/reports"
+import { saveHistory } from "../api/history"
+import type { Report } from "./ReportPage"
 
 interface OutletContext {
   setReportCount: React.Dispatch<React.SetStateAction<number>>;
@@ -19,20 +18,52 @@ export interface ReportPreferences {
   tone: string
 }
 
+interface PendingReport {
+  jobId: string
+  topic: string
+  preferences: ReportPreferences
+}
+
+const pendingReportKey = "heysignal.pendingReport"
+
+function readPendingReport(): PendingReport | null {
+  try {
+    const job = JSON.parse(sessionStorage.getItem(pendingReportKey) ?? "null")
+    if (typeof job?.jobId === "string" && typeof job.topic === "string" &&
+        typeof job.preferences?.focus === "string" && typeof job.preferences.depth === "number" &&
+        typeof job.preferences.tone === "string") {
+      return job
+    }
+  } catch {
+    // The report can still be tracked in memory when browser storage is unavailable.
+  }
+  return null
+}
+
+function storePendingReport(job: PendingReport | null) {
+  try {
+    if (job) sessionStorage.setItem(pendingReportKey, JSON.stringify(job))
+    else sessionStorage.removeItem(pendingReportKey)
+  } catch {
+    // Storage is optional for the currently open page.
+  }
+}
+
 export function HomePage() {
-  const [topic, setTopic] = useState("")
-  const [preferences, setPreferences] = useState<ReportPreferences>({
+  const [pendingReport, setPendingReport] = useState(readPendingReport)
+  const [topic, setTopic] = useState(pendingReport?.topic ?? "")
+  const [preferences, setPreferences] = useState<ReportPreferences>(pendingReport?.preferences ?? {
     focus: "Just the Facts",
     depth: 1,
     tone: "Express Mode"
   })
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [processingStep, setProcessingStep] = useState("")
+  const [isStarting, setIsStarting] = useState(false)
+  const [connectionInterrupted, setConnectionInterrupted] = useState(false)
+  const [searchError, setSearchError] = useState("")
   const [refinedTopic, setRefinedTopic] = useState("")
-  const [progress, setProgress] = useState(0)
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
+  const trackingController = useRef<AbortController | null>(null)
   const navigate = useNavigate()
-  const { toast } = useToast()
   const { setReportCount } = useOutletContext<OutletContext>();
   const location = useLocation()
   const navigationType = useNavigationType()
@@ -56,129 +87,85 @@ export function HomePage() {
     return () => cancelAnimationFrame(frame)
   }, [anchor, canScrollToAnchor, location.key, navigationType])
 
-  const steps = [
-    {
-      id: "search",
-      icon: <Search className="h-4 w-4" />,
-      title: "Search Phase",
-      description: "Refining search query and finding relevant articles",
-      color: "text-blue-500"
-    },
-    {
-      id: "profiling",
-      icon: <BarChart3 className="h-4 w-4" />,
-      title: "Profiling Phase",
-      description: "Analyzing article relevance and quality",
-      color: "text-green-500"
-    },
-    {
-      id: "selection",
-      icon: <Target className="h-4 w-4" />,
-      title: "Selection Phase",
-      description: "Selecting the best sources for analysis",
-      color: "text-orange-500"
-    },
-    {
-      id: "synthesis",
-      icon: <Brain className="h-4 w-4" />,
-      title: "Synthesis Phase",
-      description: "Generating comprehensive analysis",
-      color: "text-purple-500"
-    },
-    {
-      id: "editing",
-      icon: <Edit3 className="h-4 w-4" />,
-      title: "Editing Phase",
-      description: "Polishing final report",
-      color: "text-pink-500"
+  useEffect(() => {
+    if (!pendingReport) return
+    const { jobId, topic, preferences } = pendingReport
+    const controller = new AbortController()
+    trackingController.current = controller
+
+    waitForReport(jobId, controller.signal, update => {
+      setConnectionInterrupted(update === null)
+      if (!update) return
+      const index = reportSteps.indexOf(update.step)
+      if (index !== -1) setCurrentStepIndex(index)
+      if (update.refined_topic) setRefinedTopic(update.refined_topic)
+    })
+      .then(finalReport => {
+        if (controller.signal.aborted) return
+        storePendingReport(null)
+        setPendingReport(null)
+        void saveHistory(topic, preferences, finalReport.agent_details.editing, jobId)
+          .then(() => setReportCount(count => count + 1))
+
+        const report: Report = {
+          job_id: jobId,
+          user_preferences: preferences,
+          final_report_data: finalReport.agent_details,
+          topic,
+          refined_topic: finalReport.refined_topic || topic,
+          timestamp: new Date().toISOString(),
+        }
+        navigate(`/report/${jobId}`, { state: { report } })
+      })
+      .catch(error => {
+        if (controller.signal.aborted) return
+        console.error("Search report could not be completed:", error)
+        storePendingReport(null)
+        setPendingReport(null)
+        setSearchError(error instanceof ReportSearchError
+          ? error.message
+          : "We couldn’t finish your report. Try again in a moment.")
+      })
+
+    return () => {
+      controller.abort()
+      trackingController.current = null
     }
-  ]
+  }, [pendingReport, navigate, setReportCount])
 
   const handleGenerateReport = async () => {
-    if (!topic.trim()) {
-      toast({
-        title: "Topic Required",
-        description: "Please enter a topic to generate a report.",
-        variant: "destructive"
-      })
+    if (isStarting || pendingReport) return
+    const searchTopic = topic.trim()
+    if (!searchTopic) {
+      setSearchError("Enter a topic to start a report.")
       return
     }
 
-    
-    setIsGenerating(true)
-    setProgress(0)
+    setSearchError("")
+    setIsStarting(true)
+    setConnectionInterrupted(false)
+    setRefinedTopic("")
     setCurrentStepIndex(0)
 
     try {
-      const { job_id, finalReport } = await generateReport({
-        topic: topic.trim(),
-        preferences,
-        onProgress: (message: string, progressData?: any) => {
-          
-          setProcessingStep(message)
-          
-          if (progressData && progressData.step) {
-            const stepIndex = steps.findIndex(s => progressData.step.toLowerCase().includes(s.id))
-            if (stepIndex !== -1) {
-              // Update current step immediately
-              setCurrentStepIndex(stepIndex)
-
-              // Update refined topic when available
-              if (progressData.refined_topic) {
-                setRefinedTopic(progressData.refined_topic)
-              }
-
-              // Only update progress when a step is completed
-              if (progressData.status === 'completed') {
-                setProgress(((stepIndex + 1) / steps.length) * 100)
-              }
-            }
-          }
-        }
-      })
-
-      
-      setReportCount(prev => prev + 1); // Increment report count
-
-      // Construct the Report object to pass to the ReportPage
-      const reportToPass: Report = {
-        job_id: job_id,
-        user_preferences: preferences,
-        final_report_data: {
-          editing: finalReport.agent_details.editing,
-          search: finalReport.agent_details.search,
-          profiling: finalReport.agent_details.profiling,
-          selection: finalReport.agent_details.selection,
-          synthesis: finalReport.agent_details.synthesis,
-        },
-        topic: topic.trim(),
-        refined_topic: refinedTopic || topic.trim(), // Use refined topic if available
-        timestamp: new Date().toISOString(),
-      };
-
-      // Navigate to the report page, passing the correctly structured report object
-      navigate(`/report/${job_id}`, { state: { report: reportToPass } })
+      const jobId = await startReport(searchTopic, preferences)
+      const job = { jobId, topic: searchTopic, preferences }
+      storePendingReport(job)
+      setPendingReport(job)
     } catch (error) {
-      console.error("Error generating report:", error)
-      toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Failed to generate report",
-        variant: "destructive"
-      })
+      console.error("Could not start search report:", error)
+      setSearchError(navigator.onLine
+        ? "We couldn’t start your report. Try again in a moment."
+        : "You’re offline. Reconnect to start a report.")
     } finally {
-      setIsGenerating(false)
-      setProcessingStep("")
-      setProgress(0)
-      setCurrentStepIndex(0)
+      setIsStarting(false)
     }
   }
 
-  
-    const handleCancelGeneration = () => {
-    setIsGenerating(false)
-    setProcessingStep("")
-    setProgress(0)
-    setCurrentStepIndex(0)
+  const handleStopWaiting = () => {
+    trackingController.current?.abort()
+    storePendingReport(null)
+    setPendingReport(null)
   }
 
   return (
@@ -190,13 +177,15 @@ export function HomePage() {
         setTopic={setTopic}
         preferences={preferences}
         setPreferences={setPreferences}
-        isGenerating={isGenerating}
+        isGenerating={isStarting || pendingReport !== null}
+        isStarting={isStarting}
         handleGenerateReport={handleGenerateReport}
-        processingStep={processingStep}
-        progress={progress}
+        searchError={searchError}
+        connectionInterrupted={connectionInterrupted}
+        progress={currentStepIndex / reportSteps.length * 100}
         currentStepIndex={currentStepIndex}
         refinedTopic={refinedTopic}
-        handleCancelGeneration={handleCancelGeneration}
+        onStopWaiting={handleStopWaiting}
       />
     </div>
   )
