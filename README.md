@@ -1,148 +1,69 @@
-# Signal News App - Frontend Documentation
+# HeySignal
 
-## Table of Contents
-1. [Project Overview](#project-overview)
-2. [Architecture](#architecture)
-3. [Getting Started](#getting-started)
-4. [Project Structure](#project-structure)
-5. [Component Documentation](#component-documentation)
-6. [API Layer](#api-layer)
-7. [State Management](#state-management)
-8. [Authentication](#authentication)
-9. [Routing](#routing)
-10. [Styling and UI](#styling-and-ui)
+HeySignal is a daily briefing on the business of tech with an interactive dashboard and on-demand research reports. The frontend uses React, TypeScript, Vite, React Router, and Tailwind CSS. It connects to a FastAPI backend and uses Supabase for authentication.
 
-## Project Overview
+[Open HeySignal](https://www.heysignal.app/)
 
-This document covers the frontend for the Signal News App, a real-time AI-powered news aggregation and synthesis platform. The frontend is a React-based client application built with Vite that communicates with a FastAPI backend.
+## Today’s story
 
-### Key Features
-- Real-time report generation with live progress tracking via WebSockets.
-- Customizable report preferences (focus, depth, tone).
-- Interactive "Tech Pulse" dashboard with data visualizations.
-- Daily market deep dive with a short summary, business impact, a longer-term outlook, and inline article citations.
-- User authentication (via Supabase) and persistent report history.
-- Guest mode with session-based history.
-- Report sharing and exporting to PDF.
-- Responsive design with dark/light theme support.
+The home page opens with a short introduction and a daily market deep dive when one is available. **The story** gives the sequence of events, **Who’s affected** explains the business impact, and **What to watch** covers the next 12 months, the next two to three years, and a development that could change the outlook.
 
-## Architecture
+The [market story component](client/src/components/dashboard/MarketDeepDiveCard.tsx) turns source IDs into numbered links beside the claims they support. The [brief schema](client/src/types/marketDeepDive.ts) validates the optional story and cleans up citation markers in older snapshots. The dashboard remains available when a story is missing or invalid.
 
-### Technology Stack
+## Tech dashboard
 
-#### Frontend
-- **React 18**: Core UI library for building the user interface.
-- **TypeScript**: For static typing and improved developer experience.
-- **Vite**: High-performance build tool and development server.
-- **React Router DOM**: For client-side routing and navigation.
-- **Tailwind CSS**: Utility-first CSS framework for styling.
-- **Shadcn/ui**: A collection of reusable UI components.
-- **Lucide React**: Icon library.
-- **Axios**: HTTP client for making requests to the backend API.
-- **Supabase Client**: For interacting with Supabase for authentication.
+| Panel | What you can explore |
+| --- | --- |
+| GitHub Trending | A donut showing the language breakdown of trending repositories or stars earned today. Select a slice or its legend entry to see repository links and short descriptions. |
+| Product Hunt | A treemap sized by the number of products in each category. Select a category to see launch links and short descriptions. A product can appear in two categories. |
+| Prediction markets | Manifold Yes probabilities plotted against trading volume. Category filters update the volume breakdown, market ranks, and shortcuts to the highest volume market and the market closest to 50%. The plot keeps the same scale while you filter. |
+| Headlines and topics | Expand headlines to read summaries and open the original reporting. Topic bars show editorial prominence scores out of 100. |
 
-#### Backend
-- **FastAPI**: The web framework for the Python-based backend API.
-- **Supabase**: Used for the PostgreSQL database and user authentication.
+The [Tech Pulse fetcher](https://github.com/pouyan-sajadi/tech_pulse_fetcher) produces the daily snapshot. Production builds load it from `GET /api/tech-pulse/latest`. The [dashboard adapter](client/src/api/dashboard.ts) validates each feed and uses native JSON parsing for probability and volume. Report requests use the shared parser that preserves large IDs.
 
-## Getting Started
+The Vite development server uses the [Nov 18, 2026 fixture](client/src/data/pulse-fixture-2026-11-18.json) and labels it as a preview. The build served by `npm run preview` uses the live endpoint configured at build time.
 
-1.  **Navigate to the client directory:**
-    ```bash
-    cd client
-    ```
+## Create a report
 
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
+Enter a topic and optionally choose a focus, depth, and tone. The [report client](client/src/api/reports.ts) starts a job with `POST /process_news`, subscribes to progress at `/ws/status/:job_id`, and opens the finished report at `/report/:id`. The report page renders the result from Markdown and lets you copy the report link or export a PDF.
 
-3.  **Configure Environment Variables:**
-    Create a `.env` file in the `client` directory and add your Supabase project details:
-    ```
-    VITE_SUPABASE_URL="your_supabase_project_url"
-    VITE_SUPABASE_ANON_KEY="your_supabase_public_anon_key"
-    VITE_API_BASE_URL="http://127.0.0.1:8000"
-    ```
+Signed-in users authenticate with Google through Supabase. The [history client](client/src/api/history.ts) saves their reports through the backend. Guests can generate reports and reopen them from history in the same browser session. Opening a copied link still requires access through the signed-in account or the original guest session.
 
-4.  **Run the development server:**
-    ```bash
-    npm run dev
-    ```
-    The application will be available at `http://localhost:5173`.
+## Run locally
 
-## Project Structure
+Install Node.js and npm, then run these commands from the repository root.
 
-The `client/src` directory is organized as follows:
-
-```
-client/src/
-├── api/            # Modules for communicating with the backend API.
-├── components/     # Reusable UI components.
-│   ├── home/       # Components specific to the HomePage.
-│   ├── report/     # Components specific to the ReportPage.
-│   └── ui/         # Base UI components from Shadcn.
-├── hooks/          # Custom React hooks (e.g., `useToast`).
-├── lib/            # Utility functions and library initializations (e.g., Supabase client).
-├── pages/          # Top-level page components.
-├── types/          # TypeScript type definitions.
-├── App.tsx         # Main application component with routing setup.
-└── main.tsx        # Application entry point.
+```sh
+cd client
+npm install
 ```
 
-## API Layer
+Create `client/.env` with the following values. Use your Supabase project URL and its public anon key.
 
-The API layer is responsible for all communication with the backend.
+```dotenv
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-public-anon-key
+VITE_API_BASE_URL=http://127.0.0.1:8000
+VITE_BACKEND_URL=http://127.0.0.1:8000
+```
 
-### API Configuration (`api/api.ts`)
-- **Purpose**: Provides a centralized Axios instance for making HTTP requests to the FastAPI backend.
-- **Features**: Sets the base URL and standard headers for all requests.
+`VITE_API_BASE_URL` is the base for relative requests such as the live dashboard endpoint. `VITE_BACKEND_URL` is used for report and history requests and the report progress WebSocket. Set both to your [backend](https://github.com/pouyan-sajadi/signal-news-backend) when running the full flow. The local dashboard fixture works without a running FastAPI server.
 
-### Report Generation & History (`api/reports.ts`)
-- **Purpose**: Handles all API calls related to generating and managing reports.
-- **Functions**:
-    - `generateReport(data)`: Initiates the report generation process. It sends an initial HTTP request to get a `job_id` and then establishes a WebSocket connection to receive real-time progress updates and the final report.
-    - `getReport(jobId)`: Fetches a single, previously generated report from the backend.
-    - `getReportHistory()`: Retrieves the list of reports for the currently authenticated user. Handles guest history via `sessionStorage`.
-    - `deleteReport(jobId)`: Deletes a specific report from the user's history.
+```sh
+npm run dev
+```
 
-### Dashboard Data (`api/dashboard.ts`)
-- **Purpose**: Fetches and transforms data for the "Tech Pulse" dashboard.
-- **Functions**:
-    - `getDashboardData()`: Calls the `/api/tech-pulse/latest` backend endpoint and adapts the response data into the format expected by the various dashboard components.
+Open [localhost:5173](http://localhost:5173/). Run `npm run build` to write the production bundle to `client/dist`, then `npm run preview` to serve that bundle locally.
 
-### Market Deep Dive
+## Routes and deployment
 
-`MarketDeepDiveCard` renders the optional `pulse_data.market_deep_dive` brief generated by the [Tech Pulse fetcher](https://github.com/pouyan-sajadi/tech_pulse_fetcher). The summary gives the market takeaway. **The story** gives the sequence of events, **Who’s affected** explains the business impact, and **What to watch** covers the next year, the next two to three years, and a development that could change the outlook.
+| Route | Destination |
+| --- | --- |
+| `/` | Home and daily briefing |
+| `/#market-story` | Today’s story |
+| `/#dashboard-section` | Tech dashboard |
+| `/#top-search-section` | Create a report |
+| `/report/:id` | Report by job ID |
+| `/about`, `/privacy-policy`, `/terms-of-service` | Site information and policies |
 
-The card resolves each paragraph's source IDs to numbered links beside the text. The links open the original articles or research findings, and their accessible names include the source titles. The API adapter validates the brief, cleans up citation markers in older snapshots, and leaves the rest of the dashboard available when the brief is missing or invalid.
-
-### User History (`api/history.ts`)
-- **Purpose**: Manages saving user report history.
-- **Functions**:
-    - `saveHistory(...)`: Saves a completed report. If the user is logged in, it sends the data to the backend; otherwise, it saves it to the browser's `sessionStorage` for guest users.
-
-## State Management
-
-The application primarily relies on local component state (`useState`) and React context for state management.
-- **`HomePage`**: Manages the state for the topic input, generation progress, and user preferences.
-- **`ReportPage`**: Manages the state for displaying a single report.
-- **`App.tsx`**: Manages a global `reportCount` to update the sidebar when new reports are created.
-- **Theme Management**: Uses `next-themes` to manage the application's light/dark theme, persisting the choice in `localStorage`.
-
-## Authentication
-
-- **Supabase**: Authentication is handled via Supabase. The `lib/supabaseClient.ts` file initializes the Supabase client.
-- **Auth Flow**:
-    1. Users can sign up or log in using Supabase's built-in authentication UI or custom components.
-    2. Upon successful login, Supabase provides a JWT (access token).
-    3. This token is included in the `Authorization` header for all authenticated API requests to the backend (e.g., fetching or deleting history).
-- **Guest Users**: If a user is not logged in, their report history is stored in `sessionStorage` for the duration of their session.
-
-## Routing
-
-- **React Router DOM**: Manages all client-side routing.
-- **Routes**:
-    - `/`: The main `HomePage`, which includes the dashboard and the report generation input.
-    - `/report/:id`: The `ReportPage`, which displays a single generated report, identified by its `job_id`.
-- **Layout**: The `LayoutWithSidebar` component provides a consistent structure with a sidebar for navigation and history, and a main content area where the pages are rendered.
+Vercel deploys the frontend from `main`. [Vercel rewrites](client/vercel.json) let React Router handle direct links. The [blue H SVG](client/public/favicon.svg) is shared by the header and the browser tab.
