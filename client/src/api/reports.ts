@@ -1,6 +1,5 @@
 import api from './api';
-import { ReportPreferences } from '../pages/HomePage';
-import { saveHistory } from './history';
+import type { ReportPreferences } from '../pages/HomePage';
 import { supabase } from '../lib/supabaseClient';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
@@ -9,6 +8,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 // Define the structure of the final report data from the backend
 export interface FinalReportData {
   topic: string;
+  refined_topic?: string;
   agent_details: {
     search: any[]; // Adjust types as per actual data
     profiling: any[];
@@ -18,72 +18,113 @@ export interface FinalReportData {
   };
 }
 
-// Description: Generate a new report
-// Endpoint: POST /process_news
-// Request: { topic: string, user_preferences: ReportPreferences }
-// Response: { message: string, job_id: string }
-export const generateReport = async (data: {
-  topic: string;
-  preferences: ReportPreferences;
-  onProgress?: (step: string, progressData?: any) => void; // progressData can be the full WebSocket message
-}) => {
-  try {
-    // 1. Initiate process via HTTP POST
-    const response = await api.post(`${BACKEND_URL}/process_news`, {
-      topic: data.topic,
-      user_preferences: data.preferences, // Match backend's expected field name
-    });
-    const { job_id } = response.data;
+export const reportSteps = ['search', 'profiling', 'selection', 'synthesis', 'editing'] as const;
 
-    // 2. Establish WebSocket connection
-    return new Promise<{job_id: string, finalReport: FinalReportData}>((resolve, reject) => {
-      const ws = new WebSocket(`${BACKEND_URL.replace('http', 'ws')}/ws/status/${job_id}`);
-
-      ws.onopen = () => {
-        if (data.onProgress) {
-          data.onProgress("WebSocket connected. Waiting for updates...");
-        }
-      };
-
-      ws.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-
-        if (data.onProgress) {
-          data.onProgress(message.message || `Step: ${message.step}, Status: ${message.status}`, message);
-        }
-
-        if (message.status === 'completed' && message.step === 'search') {
-          if (data.onProgress) {
-            data.onProgress(`Found ${message.data.length} articles.`, { ...message, refined_topic: message.refined_topic });
-          }
-        }
-
-        if (message.status === 'completed' && message.step === 'editing') {
-          // Final report received
-          const finalReportData = message.data as FinalReportData;
-          // Call the updated saveHistory function
-          saveHistory(data.topic, data.preferences, finalReportData.agent_details.editing, job_id);
-          resolve({job_id, finalReport: finalReportData });
-          ws.close();
-        } else if (message.status === 'error') {
-          reject(new Error(message.message || 'An unknown error occurred during processing.'));
-          ws.close();
-        }
-      };
-
-      
-
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        reject(new Error('WebSocket error. Please check console for details.'));
-      };
-    });
-
-  } catch (error: any) {
-    console.error("Error initiating report generation:", error);
-    throw new Error(error?.response?.data?.detail || error.message || "Failed to initiate report generation.");
-  }
+type ReportProgress = {
+  status: 'running';
+  step: typeof reportSteps[number];
+  refined_topic?: string | null;
 };
+
+type ReportStatus = ReportProgress | {
+  status: 'completed';
+  data: FinalReportData;
+} | {
+  status: 'error';
+  code: 'no_articles' | 'timed_out' | 'unavailable';
+};
+
+const failureMessages = {
+  no_articles: "We couldn’t find recent coverage for that topic. Try a broader search.",
+  timed_out: "Your report took too long to finish. Try a narrower topic or try again.",
+  unavailable: "We couldn’t finish your report. Try again in a moment.",
+};
+
+export class ReportSearchError extends Error {}
+
+export async function startReport(topic: string, preferences: ReportPreferences) {
+  const { data } = await api.post(`${BACKEND_URL}/process_news`, {
+    topic,
+    user_preferences: preferences,
+  }, { timeout: 60_000 });
+  if (typeof data?.job_id !== 'string' || !data.job_id) {
+    throw new ReportSearchError("We couldn’t start your report. Try again in a moment.");
+  }
+  return data.job_id as string;
+}
+
+function waitForNextCheck(delay: number, signal: AbortSignal) {
+  return new Promise<void>(resolve => {
+    if (signal.aborted) {
+      resolve();
+      return;
+    }
+
+    const finish = () => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', finish);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('online', finish);
+      resolve();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') finish();
+    };
+    const timer = window.setTimeout(finish, delay);
+    signal.addEventListener('abort', finish, { once: true });
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('online', finish);
+  });
+}
+
+export async function waitForReport(
+  jobId: string,
+  signal: AbortSignal,
+  onProgress: (update: ReportProgress | null) => void,
+): Promise<FinalReportData> {
+  const url = `${BACKEND_URL}/report-jobs/${encodeURIComponent(jobId)}`;
+  let retryDelay = 3_000;
+
+  while (!signal.aborted) {
+    let update: ReportStatus;
+    try {
+      const response = await api.get(url, { signal, timeout: 10_000 });
+      update = response.data;
+    } catch (error) {
+      if (signal.aborted) break;
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 404) {
+        throw new ReportSearchError("This report is no longer available. Start a new search to try again.");
+      }
+      if (status && status < 500 && status !== 408 && status !== 429) {
+        throw new ReportSearchError("We couldn’t check your report. Start a new search to try again.");
+      }
+      onProgress(null);
+      await waitForNextCheck(retryDelay, signal);
+      retryDelay = Math.min(retryDelay * 2, 15_000);
+      continue;
+    }
+
+    if (signal.aborted) break;
+    if (update?.status === 'completed' && update.data?.agent_details?.editing?.trim()) {
+      return update.data;
+    }
+    if (update?.status === 'error') {
+      const message = Object.prototype.hasOwnProperty.call(failureMessages, update.code)
+        ? failureMessages[update.code]
+        : failureMessages.unavailable;
+      throw new ReportSearchError(message);
+    }
+    if (update?.status !== 'running') {
+      throw new ReportSearchError(failureMessages.unavailable);
+    }
+
+    onProgress(update);
+    retryDelay = 3_000;
+    await waitForNextCheck(document.visibilityState === 'hidden' ? 15_000 : 3_000, signal);
+  }
+  throw new DOMException('Stopped checking for the report.', 'AbortError');
+}
 
 import { Report } from '../pages/ReportPage';
 
