@@ -160,8 +160,14 @@ function adaptSnapshot(response: unknown) {
 }
 
 export async function getDashboardData() {
-  const response = import.meta.env.DEV
-    ? (await import('@/data/pulse-fixture-2026-11-18.json')).default
-    : (await api.get('/api/tech-pulse/latest')).data
-  return adaptSnapshot(response)
+  if (import.meta.env.DEV) {
+    const { default: fixture } = await import('@/data/pulse-fixture-2026-11-18.json')
+    return adaptSnapshot(fixture)
+  }
+
+  // The shared parser preserves large report IDs, but chart measures are ordinary numbers.
+  const { data } = await api.get('/api/tech-pulse/latest', {
+    transformResponse: [(body: string) => JSON.parse(body)],
+  })
+  return adaptSnapshot(data)
 }
