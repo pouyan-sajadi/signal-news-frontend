@@ -1,104 +1,64 @@
-import { Newspaper, History, Search, LayoutDashboard, Menu, Info } from "lucide-react"
-import { Button } from "./ui/button"
-import { ThemeToggle } from "./ui/theme-toggle"
-import { useNavigate, useLocation, Link } from "react-router-dom"
-import { UserProfile } from "./UserProfile"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
+import { History, Menu } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Button } from './ui/button'
+import { ThemeToggle } from './ui/theme-toggle'
+import { UserProfile } from './UserProfile'
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+
+const destinations = [
+  { label: 'Today’s story', id: 'market-story' },
+  { label: 'Tech dashboard', id: 'dashboard-section' },
+  { label: 'Create a report', id: 'top-search-section' },
+]
 
 interface HeaderProps {
-  isDesktopSidebarOpen: boolean;
-  setIsDesktopSidebarOpen: (isOpen: boolean) => void;
-  setIsMobileSidebarOpen: (isOpen: boolean) => void;
+  isDesktopSidebarOpen: boolean
+  setIsDesktopSidebarOpen: (isOpen: boolean) => void
+  setIsMobileSidebarOpen: (isOpen: boolean) => void
 }
 
 export function Header({ isDesktopSidebarOpen, setIsDesktopSidebarOpen, setIsMobileSidebarOpen }: HeaderProps) {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  const handleNavigationAndScroll = (id: string) => {
-    if (location.pathname !== '/') {
-      navigate('/', { state: { scrollToId: id } });
-    } else {
-      const element = document.getElementById(id);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth" });
-      }
-    }
-    setIsMobileMenuOpen(false); // Close mobile menu after navigation
-  };
+  const [menuOpen, setMenuOpen] = useState(false)
 
   return (
-    <header className="w-full border-b bg-background/80 backdrop-blur-sm">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <div 
-          className="flex items-center gap-2 text-xl font-bold cursor-pointer hover:text-primary/80 transition-colors" 
-          onClick={() => navigate("/")}
-        >
-          <Newspaper className="h-6 w-6 text-blue-600" />
-          <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Hey Signal
-          </span>
-        </div>
-        
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => handleNavigationAndScroll("top-search-section")}>
-            <Search className="h-4 w-4 mr-1" />
-            Generate
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => handleNavigationAndScroll("dashboard-section")}>
-            <LayoutDashboard className="h-4 w-4 mr-1" />
-            Dashboard
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setIsDesktopSidebarOpen(!isDesktopSidebarOpen)}>
-            <History className="h-4 w-4 mr-1" />
-            History
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/about">
-              <Info className="h-4 w-4 mr-1" />
-              About
-            </Link>
-          </Button>
-          <ThemeToggle />
+    <header className="signal-header">
+      <div className="header-inner">
+        <Link to="/" className="brand-mark" aria-label="HeySignal home">
+          <img className="brand-glyph" src="/favicon.svg" alt="" width={29} height={29} />HeySignal
+        </Link>
+        <nav className="signal-nav" aria-label="Main navigation">
+          {destinations.map(({ label, id }) => (
+            <Link key={id} to={`/#${id}`}>{label}</Link>
+          ))}
+        </nav>
+        <div className="header-tools">
+          <div className="header-desktop-tools">
+            <Button variant="ghost" size="icon" aria-label="Report history" aria-expanded={isDesktopSidebarOpen}
+              onClick={() => setIsDesktopSidebarOpen(!isDesktopSidebarOpen)}>
+              <History size={18} aria-hidden="true" />
+            </Button>
+            <ThemeToggle />
+          </div>
           <UserProfile />
-        </div>
-
-        {/* Mobile Navigation */}
-        <div className="md:hidden flex items-center gap-2">
-          <ThemeToggle />
-          <UserProfile />
-          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu className="h-6 w-6" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[250px] sm:w-[300px]">
-              <nav className="flex flex-col gap-4 pt-8">
-                <Button variant="ghost" className="justify-start" onClick={() => handleNavigationAndScroll("top-search-section")}>
-                  <Search className="h-4 w-4 mr-2" />
-                  Generate
-                </Button>
-                <Button variant="ghost" className="justify-start" onClick={() => handleNavigationAndScroll("dashboard-section")}>
-                  <LayoutDashboard className="h-4 w-4 mr-2" />
-                  Dashboard
-                </Button>
-                <Button variant="ghost" className="justify-start" onClick={() => setIsMobileSidebarOpen(true)}> {/* Changed to setIsMobileSidebarOpen(true) */}
-                  <History className="h-4 w-4 mr-2" />
-                  History
-                </Button>
-                <Button variant="ghost" className="justify-start" asChild>
-                  <Link to="/about" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Info className="h-4 w-4 mr-2" />
-                    About
-                  </Link>
-                </Button>
-              </nav>
-            </SheetContent>
-          </Sheet>
+          <div className="header-mobile-tools">
+            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="More options"><Menu size={20} /></Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-64" aria-describedby={undefined}>
+                <SheetTitle className="display-type">More options</SheetTitle>
+                <div className="header-more">
+                  <Button variant="ghost" onClick={() => {
+                    setMenuOpen(false)
+                    setIsMobileSidebarOpen(true)
+                  }}>Report history</Button>
+                  <Link to="/about" onClick={() => setMenuOpen(false)}>About</Link>
+                  <ThemeToggle />
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </div>
     </header>

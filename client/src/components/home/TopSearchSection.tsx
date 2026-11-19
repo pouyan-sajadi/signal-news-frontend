@@ -71,15 +71,9 @@ export function TopSearchSection({
   ]
 
   return (
-    <div id="top-search-section" className="bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 p-4 mb-32 py-8 text-center">
-      <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
-        Intelligent Search, Unbiased Reports
-      </h1>
-      <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
-        Transform any topic into a comprehensive, AI-generated news report in real-time.
-        Get noise-free content, instant intelligence, and personalized reports.
-      </p>
-      <div className="max-w-full mx-auto">
+    <section id="top-search-section" className="search-section" tabIndex={-1} aria-labelledby="report-entry-title">
+      <div className="search-intro"><h2 id="report-entry-title">Create a report</h2></div>
+      <div className="search-form-wrap">
         {!isGenerating ? (
           <TopicInput
             value={topic}
@@ -168,6 +162,6 @@ export function TopSearchSection({
           </Card>
         )}
       </div>
-    </div>
+    </section>
   );
 }

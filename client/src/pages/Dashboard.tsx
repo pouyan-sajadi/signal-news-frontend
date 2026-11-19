@@ -1,169 +1,134 @@
-import { useEffect, useState } from 'react'
-import { Card } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
+import { useEffect, useState, type ReactNode } from 'react'
+import { ArrowUpRight, ChevronDown } from 'lucide-react'
+import { getDashboardData, type NewsBriefStory } from '@/api/dashboard'
 import { GitHubTrending } from '@/components/dashboard/GitHubTrending'
-import { ProductHuntInsights } from '@/components/dashboard/ProductHuntInsights'
-import { DailyNewsBrief } from '@/components/dashboard/DailyNewsBrief'
-import { TechZeitgeist } from '@/components/dashboard/TechZeitgeist'
-import { MarketPredictions } from '@/components/dashboard/MarketPredictions'
 import { MarketDeepDiveCard } from '@/components/dashboard/MarketDeepDiveCard'
-import { getDashboardData } from '@/api/dashboard'
-import { useToast } from '@/hooks/useToast'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { MarketPredictions } from '@/components/dashboard/MarketPredictions'
+import { ProductHuntInsights } from '@/components/dashboard/ProductHuntInsights'
 
-import { Clock, Info } from 'lucide-react';
+type Snapshot = Awaited<ReturnType<typeof getDashboardData>>
 
-import { TooltipProvider } from '@/components/ui/tooltip';
+function DashboardPanel({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+  return (
+    <section className="scan-module">
+      <header className="module-head">
+        <h3>{title}</h3>
+        {hint && <p>{hint}</p>}
+      </header>
+      {children}
+    </section>
+  )
+}
 
-export function Dashboard() {
-  const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<any>({
-    marketDeepDive: null,
-    github: null,
-    productHunt: null,
-    news: null,
-    keywords: null,
-    predictions: null
-  })
-  const { toast } = useToast()
-
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      setLoading(true)
-
-      try {
-        const dashboardData = await getDashboardData();
-        setData(dashboardData);
-
-        
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error)
-        toast({
-          title: "Error",
-          description: "Failed to load dashboard data. Please try again.",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchDashboardData()
-  }, [toast])
-
-  const getFormattedTimestamp = () => {
-    if (!data?.news?.created_at) return null;
-
-    const date = new Date(data.news.created_at);
-    return date.toLocaleString(undefined, {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-      timeZoneName: 'short',
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className="bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 p-4">
-        <div className="w-full">
-          <div className="mb-8">
-            <Skeleton className="h-12 w-96 mb-4" />
-            <Skeleton className="h-6 w-[600px]" />
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[400px]">
-            <div className="lg:row-span-1">
-              <Skeleton className="h-full w-full rounded-xl" />
-            </div>
-            <div className="lg:row-span-1">
-              <Skeleton className="h-full w-full rounded-xl" />
-            </div>
-            <div className="lg:row-span-2">
-              <Skeleton className="h-full w-full rounded-xl" />
-            </div>
-            <div className="lg:row-span-1">
-              <Skeleton className="h-full w-full rounded-xl" />
-            </div>
-            <div className="lg:row-span-1">
-              <Skeleton className="h-full w-full rounded-xl" />
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+function StoryList({ stories }: { stories: NewsBriefStory[] }) {
+  if (!stories.length) return <p className="module-empty">No headlines in this update.</p>
 
   return (
-    <div id="dashboard-section" className="bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 mb-32">
-      <div className="w-full">
-        {/* Header */}
-        <div className="mb-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-               Daily Tech Overview
-            </h1>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-muted-foreground">
-                  <Info className="h-4 w-4 mr-1" />
-                  What's this?
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>About the Dashboard</DialogTitle>
-                </DialogHeader>
-                <p>
-                  This dashboard provides a daily overview of the tech landscape. It combines data from various sources to help you spot emerging trends, understand market sentiment, and stay informed about the latest developments. To get more details on each, simply click on them.
-                </p>
-              </DialogContent>
-            </Dialog>
-          </div>
+    <ul className="news-list">
+      {stories.map(story => (
+        <li key={story.title} className="news-item">
+          <details>
+            <summary>{story.title}<ChevronDown size={17} aria-hidden="true" /></summary>
+            <p className="news-summary">{story.summary}</p>
+            {story.sources.length > 0 && (
+              <div className="source-row">
+                {story.sources.map(source => (
+                  <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer" aria-label={source.title}>
+                    {source.source || new URL(source.url).hostname}<ArrowUpRight size={13} aria-hidden="true" />
+                  </a>
+                ))}
+              </div>
+            )}
+          </details>
+        </li>
+      ))}
+    </ul>
+  )
+}
 
-          {data?.news?.created_at && (
-            <div className="mt-3 flex items-center justify-center text-xs text-gray-500 bg-gray-100 p-1 rounded-md">
-              <Clock className="h-3 w-3 mr-1" />
-              <span>Last updated: {getFormattedTimestamp()}</span>
-            </div>
-          )}
+function KeywordBars({ keywords }: { keywords: Snapshot['keywords'] }) {
+  if (!keywords.length) return <p className="module-empty">No topic scores in this update.</p>
+
+  return (
+    <div className="keyword-list">
+      {[...keywords].sort((a, b) => b.score - a.score).map(item => (
+        <details className="keyword-row" key={item.word}>
+          <summary>
+            <span>{item.word}</span>
+            <span className="bar-track" aria-hidden="true"><span className="bar-fill" style={{ width: `${item.score}%` }} /></span>
+            <span className="keyword-score">{item.score}</span>
+          </summary>
+          {item.description && <p>{item.description}</p>}
+        </details>
+      ))}
+    </div>
+  )
+}
+
+function DashboardDate({ createdAt }: { createdAt: string | null }) {
+  if (!createdAt) return null
+  const date = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(createdAt))
+  return <time className="scan-updated" dateTime={createdAt}>{import.meta.env.DEV ? 'Preview · ' : ''}{date}</time>
+}
+
+export function Dashboard({ onReady }: { onReady: (ready: boolean) => void }) {
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    getDashboardData()
+      .then(result => { if (active) setSnapshot(result) })
+      .catch(() => { if (active) setLoadFailed(true) })
+    return () => { active = false }
+  }, [])
+
+  const isLoading = !snapshot && !loadFailed
+
+  useEffect(() => {
+    if (!isLoading) onReady(true)
+  }, [isLoading, onReady])
+
+  return (
+    <div className="signal-page">
+      <section className="market-section" id="market-story" tabIndex={-1} aria-labelledby="market-title" aria-busy={isLoading}>
+        {snapshot?.marketDeepDive ? <MarketDeepDiveCard brief={snapshot.marketDeepDive} /> : (
+          <div className="market-missing">
+            <h2 id="market-title">Today’s story</h2>
+            <p role="status">{isLoading ? 'Loading today’s story…' : 'No market deep dive in this update.'}</p>
+          </div>
+        )}
+      </section>
+
+      <section id="dashboard-section" className="daily-scan" tabIndex={-1} aria-labelledby="scan-title" aria-busy={isLoading}>
+        <div className="section-heading">
+          <h2 id="scan-title">Tech dashboard</h2>
+          <DashboardDate createdAt={snapshot?.createdAt ?? null} />
         </div>
-
-        {data.marketDeepDive && <MarketDeepDiveCard brief={data.marketDeepDive} />}
-
-        {/* Dashboard Grid */}
-        <TooltipProvider delayDuration={100}>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* GitHub Trending - Top Left */}
-            <div className="lg:row-span-1">
-              <GitHubTrending data={data.github} />
+        {isLoading && <p className="module-empty" role="status">Loading the dashboard…</p>}
+        {loadFailed && <p className="load-note" role="status">The dashboard couldn’t load. Reload to try again.</p>}
+        {snapshot && (
+          <div className="scan-grid">
+            <DashboardPanel title="GitHub Trending" hint="Activity by language">
+              <GitHubTrending languages={snapshot.languages} />
+            </DashboardPanel>
+            <DashboardPanel title="Product Hunt" hint="Launches by category">
+              <ProductHuntInsights categories={snapshot.launchCategories} />
+            </DashboardPanel>
+            <div className="scan-wide">
+              <DashboardPanel title="Prediction markets" hint="Manifold">
+                <MarketPredictions predictions={snapshot.predictions} />
+              </DashboardPanel>
             </div>
-
-            {/* Product Hunt Insights - Top Center */}
-            <div className="lg:row-span-1">
-              <ProductHuntInsights data={data.productHunt} />
-            </div>
-
-            {/* Daily News Brief - Right Side (spans full height) */}
-            <div className="lg:row-span-2">
-              <DailyNewsBrief data={data.news} />
-            </div>
-
-            {/* Tech Zeitgeist - Bottom Left */}
-            <div className="lg:row-span-1">
-              <TechZeitgeist data={data.keywords} />
-            </div>
-
-            {/* Market Predictions - Bottom Center */}
-            <div className="lg:row-span-1">
-              <MarketPredictions data={data.predictions} />
-            </div>
+            <DashboardPanel title="Headlines">
+              <StoryList stories={snapshot.hotTopics} />
+            </DashboardPanel>
+            <DashboardPanel title="Topics in the news" hint="Prominence score out of 100">
+              <KeywordBars keywords={snapshot.keywords} />
+            </DashboardPanel>
           </div>
-        </TooltipProvider>
-      </div>
+        )}
+      </section>
     </div>
   )
 }

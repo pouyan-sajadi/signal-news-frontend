@@ -1,15 +1,12 @@
 import { useEffect, useState } from "react"
-import { useNavigate, useOutletContext, useLocation } from "react-router-dom"
+import { useNavigate, useOutletContext, useLocation, useNavigationType } from "react-router-dom"
 import { Dashboard } from "./Dashboard"
+import { HeroSection } from "../components/home/HeroSection"
 import { TopSearchSection } from "../components/home/TopSearchSection";
-import { HeroSection } from "../components/home/HeroSection";
 
-import { generateReport, FinalReportData } from "../api/reports"
+import { generateReport } from "../api/reports"
 import { useToast } from "../hooks/useToast"
-import { Card } from "../components/ui/card"
-import { Progress } from "../components/ui/progress"
-import { Button, ButtonProps } from "../components/ui/button"
-import { X, Search, BarChart3, Target, Brain, Edit3 } from "lucide-react"
+import { Search, BarChart3, Target, Brain, Edit3 } from "lucide-react"
 import { Report } from "../components/home/ReportHistory";
 
 interface OutletContext {
@@ -37,20 +34,27 @@ export function HomePage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { setReportCount } = useOutletContext<OutletContext>();
-  const location = useLocation();
+  const location = useLocation()
+  const navigationType = useNavigationType()
+  const [dashboardReady, setDashboardReady] = useState(false)
+  const anchor = location.hash.slice(1)
+  const contentAboveAnchorCanShift = anchor === 'dashboard-section' || anchor === 'top-search-section'
+  const canScrollToAnchor = dashboardReady || !contentAboveAnchorCanShift
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
+    if (!canScrollToAnchor) return
 
-  useEffect(() => {
-    if (location.state?.scrollToId) {
-      const element = document.getElementById(location.state.scrollToId);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth" });
+    const frame = requestAnimationFrame(() => {
+      const target = document.getElementById(anchor)
+      if (target) {
+        target.focus({ preventScroll: true })
+        target.scrollIntoView({ behavior: navigationType === 'POP' ? 'instant' : 'auto' })
+      } else {
+        window.scrollTo({ top: 0, behavior: 'instant' })
       }
-    }
-  }, [location.state]);
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [anchor, canScrollToAnchor, location.key, navigationType])
 
   const steps = [
     {
@@ -178,11 +182,9 @@ export function HomePage() {
   }
 
   return (
-    <div className="container mx-auto py-8 flex flex-col flex-grow">
+    <div className="home-flow">
       <HeroSection />
-      <div className="mt-8 flex-grow">
-        <Dashboard />
-      </div>
+      <Dashboard onReady={setDashboardReady} />
       <TopSearchSection
         topic={topic}
         setTopic={setTopic}

@@ -1,220 +1,193 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { ScatterChart, Scatter, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, Legend, ReferenceLine } from 'recharts'
-import { TrendingUp, Target } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
+import { ArrowUpRight, Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import type { Prediction } from '@/api/dashboard'
+import { chartScale, compactCount, count } from './chartScale'
 
-interface MarketPredictionsProps {
-  data: {
-    predictions: Array<{
-      question: string
-      probability: number // This is 0-100
-      traderInterest: number // This is 0-100
-      category: string
-    }>
-  } | null
+const probabilityTicks = [0, 25, 50, 75, 100]
+const percentage = new Intl.NumberFormat('en', { style: 'percent', maximumFractionDigits: 1 })
+const percent = (value: number) => percentage.format(value / 100)
+
+const categoryStyles: Record<string, { name: string; color: string }> = {
+  AI: { name: 'AI', color: '#325ac7' },
+  'Technology (General)': { name: 'Tech', color: '#007b68' },
+  'Blockchain/Crypto': { name: 'Crypto', color: '#b54816' },
+  'Economics/Finance': { name: 'Finance', color: '#8a419c' },
+  'Science/Research': { name: 'Science', color: '#36718b' },
+  'Politics/Society': { name: 'Politics', color: '#a13961' },
+  Health: { name: 'Health', color: '#61762e' },
+  Other: { name: 'Other', color: '#65718a' },
+}
+const fallbackColors = ['#996516', '#4b799e', '#a54670', '#6c6c3b']
+
+function marketAccent(color: string): CSSProperties {
+  return { '--market-accent': color } as CSSProperties
 }
 
-export function MarketPredictions({ data }: MarketPredictionsProps) {
-  if (!data) return null
-  const [selectedPrediction, setSelectedPrediction] = useState<any>(null);
-
-  const getCategoryColor = (category: string) => {
-    const colors = {
-      'AI': '#8b5cf6', // Purple
-      'Hardware': '#06b6d4', // Cyan
-      'Automotive': '#10b981', // Emerald
-      'Quantum': '#f59e0b', // Amber
-      'VR/AR': '#ef4444', // Red
-      'Crypto': '#f97316', // Orange
-      'M&A': '#6366f1', // Indigo
-      'Telecom': '#84cc16', // Lime
-      'Web3': '#ec4899', // Pink
-      'Biotech': '#3b82f6', // Blue
-      'Energy': '#a855f7', // Violet
-      'Space': '#14b8a6', // Teal
-      'Robotics': '#eab308', // Yellow
-      'Cybersecurity': '#db2777', // Rose
-      'Health': '#1d4ed8', // Darker Blue
-      'Finance': '#ca8a04', // Darker Amber
-      'Education': '#059669', // Green
-      'Gaming': '#9333ea', // Purple
-      'Food': '#d97706', // Orange
-      'Travel': '#14b8a6', // Teal
-      'Fashion': '#be185d', // Rose
-      'Real Estate': '#6d28d9', // Violet
-      'Media': '#ef4444', // Red
-      'Sports': '#3b82f6', // Blue
-      'Music': '#c026d3', // Fuchsia
-      'Art': '#e11d48', // Red-500
-      'Environment': '#16a34a', // Green-600
-      'Government': '#4f46e5', // Indigo-600
-      'Retail': '#ea580c', // Orange-600
-      'Agriculture': '#65a30d', // Lime-600
-      'Manufacturing': '#a21caf', // Purple-600
-      'Logistics': '#0891b2', // Cyan-600
-      'Consulting': '#7c2d12', // Amber-800
-      'Legal': '#4338ca', // Indigo-700
-      'Marketing': '#d946ef', // Fuchsia-500
-      'Human Resources': '#f43f5e', // Rose-500
-      'Non-profit': '#22c55e', // Green-500
-      'Other': '#64748b', // Slate-600
-      'AI utils': '#8b5cf6', // Purple
-      'Technology (General)': '#06b6d4', // Cyan
-      'Blockchain/Crypto': '#f97316', // Orange
-      'Politics/Society': '#ef4444', // Red
-      'Economics/Finance': '#ca8a04', // Darker Amber
-    }
-    return colors[category as keyof typeof colors] || '#10b981' // A distinct green as a more visible default
+function getCategories(markets: Prediction[]) {
+  const groups = new Map<string, { category: string; size: number; volume: number }>()
+  for (const market of markets) {
+    const group = groups.get(market.category) ?? { category: market.category, size: 0, volume: 0 }
+    group.size += 1
+    group.volume += market.volume
+    groups.set(market.category, group)
   }
+  return [...groups.values()]
+    .sort((a, b) => b.volume - a.volume || a.category.localeCompare(b.category))
+    .map((group, index) => ({
+      ...group,
+      color: categoryStyles[group.category]?.color ?? fallbackColors[index % fallbackColors.length],
+      name: categoryStyles[group.category]?.name ?? group.category,
+    }))
+}
 
-  // Data Transformation
-  const transformedData = data.predictions.map(prediction => {
-    const probabilityDecimal = prediction.probability / 100; // Convert 0-100 to 0-1
-    return {
-      ...prediction,
-      x: (probabilityDecimal * 2) - 1, // Diverging consensus scale (-1 to 1)
-      y: prediction.traderInterest, // Y-axis is now volume (traderInterest)
-      originalProbability: prediction.probability, // Store original for tooltip
-      volume: prediction.traderInterest // Store original for tooltip
-    }
-  })
+export function MarketPredictions({ predictions }: { predictions: Prediction[] }) {
+  const [excluded, setExcluded] = useState<Set<string>>(() => new Set())
+  const [selectedMarket, setSelectedMarket] = useState<Prediction>()
+  const ranked = [...predictions].sort((a, b) => b.volume - a.volume)
+  const categories = getCategories(ranked)
+  const shownCategories = categories.filter(group => !excluded.has(group.category))
+  const shown = ranked.filter(market => !excluded.has(market.category))
+  const highestVolume = shown[0]
+  const selected = selectedMarket && shown.includes(selectedMarket) ? selectedMarket : highestVolume
+  const scale = chartScale(ranked[0]?.volume ?? 0)
+  const marketDetails = new Map(categories.map(category => [category.category, category]))
+  const totalVolume = shownCategories.reduce((sum, group) => sum + group.volume, 0)
+  const closestToEven = shown.reduce<Prediction | undefined>((closest, market) => {
+    if (!closest || Math.abs(market.probability - 50) < Math.abs(closest.probability - 50)) return market
+    return closest
+  }, undefined)
 
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload
-      return (
-        <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg p-3 shadow-lg max-w-xs">
-          <p className="font-semibold text-gray-900 text-sm mb-1">{data.question}</p>
-          <p className="text-xs text-gray-600 mb-1">
-            Predicted Likelihood: {data.originalProbability}%
-          </p>
-          <p className="text-xs text-gray-600 mb-1">
-            Capital at Stake: ${Math.round(data.volume).toLocaleString()}
-          </p>
-          <p className="text-xs text-purple-600 font-medium">
-            {data.category}
-          </p>
-        </div>
-      )
-    }
-    return null
+  if (!ranked.length) return <p className="module-empty">No prediction markets in this update.</p>
+
+  function toggleCategory(category: string) {
+    setExcluded(current => {
+      const next = new Set(current)
+      if (next.has(category)) next.delete(category)
+      else next.add(category)
+      return next
+    })
   }
-
-  // Custom X-Axis Tick Formatter
-  const formatXAxisTick = (tickItem: number) => {
-    if (tickItem === -1) return 'Strong "No"'
-    if (tickItem === 0) return 'High Controversy'
-    if (tickItem === 1) return 'Strong "Yes"'
-    return ''
-  }
-
-  // Custom Y-Axis Tick Formatter for currency
-  const formatYAxisTick = (tickItem: number) => {
-    if (tickItem >= 1000000) return `$${(tickItem / 1000000).toFixed(1)}M`
-    if (tickItem >= 1000) return `$${(tickItem / 1000).toFixed(0)}K`
-    return `$${tickItem}`
-  }
-
-  // Get unique categories for legend
-  const categories = [...new Set(data.predictions.map(p => p.category))]
-
-  const CustomLegend = () => (
-    <div className="flex flex-wrap gap-2 justify-center mt-2">
-      {categories.map((category) => (
-        <div key={category} className="flex items-center gap-1">
-          <div
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: getCategoryColor(category) }}
-          />
-          <span className="text-sm text-gray-600">{category}</span>
-        </div>
-      ))}
-    </div>
-  )
-
-  const minVolume = Math.min(...transformedData.map(d => d.y));
-  const maxVolume = Math.max(...transformedData.map(d => d.y));
 
   return (
-    <>
-      <Card className="h-full bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-        <CardHeader className="pb-1">
-          <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
-            <div className="p-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg">
-              <Target className="h-5 w-5 text-white" />
+    <div className="prediction-card">
+      <div className="market-filters">
+        <div className="market-categories" role="group" aria-label="Filter by market category">
+          {categories.map(group => {
+            const enabled = !excluded.has(group.category)
+            return (
+              <button key={group.category} type="button" style={marketAccent(group.color)}
+                aria-label={group.category} aria-pressed={enabled}
+                onClick={() => toggleCategory(group.category)}>
+                <span className="category-key" aria-hidden="true">{enabled && <Check size={10} strokeWidth={3} />}</span>
+                {group.name}<span className="category-count" aria-hidden="true">{group.size}</span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="market-filter-status">
+          <span role="status">{shown.length} of {ranked.length} markets</span>
+          {excluded.size > 0 && <button type="button" onClick={() => setExcluded(new Set())}>Show all</button>}
+        </div>
+      </div>
+
+      {selected && closestToEven ? (
+        <>
+          <div className="predictions-layout">
+            <div className="prediction-figure">
+              <p className="axis-title">Trading volume</p>
+              <div className="market-plot" role="group" aria-label="Manifold markets by Yes probability and trading volume">
+                {scale.ticks.map(tick => (
+                  <div className="y-gridline" key={tick} aria-hidden="true" style={{ bottom: `${tick / scale.max * 100}%` }}>
+                    <span>{compactCount(tick)}</span>
+                  </div>
+                ))}
+                {probabilityTicks.map(value => (
+                  <div key={value} className={`x-gridline ${value === 50 ? 'midpoint' : ''}`} aria-hidden="true" style={{ left: `${value}%` }}>
+                    <span>{value}%</span>
+                  </div>
+                ))}
+                {shown.map(market => (
+                  <button type="button" key={market.url ?? market.question} className="market-dot"
+                    style={{
+                      ...marketAccent(marketDetails.get(market.category)!.color),
+                      left: `${market.probability}%`,
+                      bottom: `${market.volume / scale.max * 100}%`,
+                    }}
+                    onClick={() => setSelectedMarket(market)} aria-pressed={selected === market}
+                    aria-label={`${market.question} ${market.category}, ${percent(market.probability)} Yes, ${count.format(Math.round(market.volume))} trading volume`}
+                    title={market.question}>
+                    <span aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+              <p className="axis-title probability-axis">Chance of Yes</p>
             </div>
-            Market Predictions
-          </CardTitle>
-          <p className="text-sm text-gray-600">What’s the smart money on?</p>
-        </CardHeader>
-        <CardContent className="pt-1">
-          <div className="h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ top: 15, right: 5, bottom: 5, left: 40 }}>
-                <XAxis
-                  type="number"
-                  dataKey="x"
-                  domain={[-1, 1]}
-                  tickFormatter={formatXAxisTick}
-                  allowDuplicatedCategory={false}
-                  name="Market Consensus"
-                  tick={{ fontSize: 13 }}
-                />
-                <YAxis
-                  type="number"
-                  dataKey="y"
-                  scale="log"
-                  domain={[minVolume * 0.8, maxVolume * 1.2]}
-                  tickFormatter={formatYAxisTick}
-                  name="Total Money Invested (Log Scale)"
-                  tick={{ fontSize: 13 }}
-                  label={{ value: "Total Money Invested", angle: -90, position: 'insideLeft', dx: 0, dy: 60, fill: '#64748b', fontSize: 13 }}
-                />
-                <ReferenceLine x={0} stroke="#e2e8f0" strokeDasharray="3 3" label={{ value: 'High Controversy', position: 'top', fill: '#64748b', fontSize: 11 }} />
-                <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
-                <Scatter data={transformedData} onClick={(data) => {
-                  if (data && data.payload) {
-                    setSelectedPrediction(data.payload);
-                  }
-                }}>
-                  {transformedData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={getCategoryColor(entry.category)}
-                      className="hover:opacity-80 transition-opacity cursor-pointer"
-                    />
-                  ))}
-                </Scatter>
-              </ScatterChart>
-            </ResponsiveContainer>
+
+            <div className="market-detail">
+              <div className="market-detail-head">
+                <p className="market-category">
+                  <span className="chart-swatch" style={{ backgroundColor: marketDetails.get(selected.category)!.color }} aria-hidden="true" />
+                  {selected.category}
+                </p>
+                {shown.length > 1 && (
+                  <div className="market-browse" role="group" aria-label="Browse shown markets">
+                    <button type="button" aria-label="Previous market"
+                      onClick={() => setSelectedMarket(shown[(shown.indexOf(selected) - 1 + shown.length) % shown.length])}>
+                      <ChevronLeft size={17} aria-hidden="true" />
+                    </button>
+                    <button type="button" aria-label="Next market"
+                      onClick={() => setSelectedMarket(shown[(shown.indexOf(selected) + 1) % shown.length])}>
+                      <ChevronRight size={17} aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div aria-live="polite" className="market-readout">
+                <h4>{selected.question}</h4>
+                <dl>
+                  <div><dt>Chance of Yes</dt><dd>{percent(selected.probability)}</dd></div>
+                  <div><dt>Trading volume</dt><dd>{count.format(Math.round(selected.volume))}</dd></div>
+                </dl>
+                <div className="market-odds-track" aria-hidden="true">
+                  <span style={{ width: `${selected.probability}%`, background: marketDetails.get(selected.category)!.color }} />
+                </div>
+                {totalVolume > 0 && (
+                  <p className="market-rank">
+                    Rank {shown.indexOf(selected) + 1} of {shown.length} by volume
+                    <span aria-hidden="true"> · </span>{percentage.format(selected.volume / totalVolume)} of shown volume
+                  </p>
+                )}
+              </div>
+              {selected.url && <a href={selected.url} target="_blank" rel="noopener noreferrer">View on Manifold <ArrowUpRight size={15} aria-hidden="true" /></a>}
+            </div>
           </div>
-          <CustomLegend />
-          <div className="mt-1 flex items-center gap-2 text-sm text-gray-600">
-            <TrendingUp className="h-4 w-4 text-blue-500" />
-            <span>High interest in AI and hardware predictions</span>
+
+          <div className="market-insights">
+            <div className="market-volume"><h4>Volume by category</h4>
+              {totalVolume > 0 ? (
+                <>
+                  <div className="market-volume-bar" role="img" aria-label={shownCategories.map(group =>
+                    `${group.category}: ${percentage.format(group.volume / totalVolume)} of shown trading volume`
+                  ).join(', ')}>
+                    {shownCategories.filter(group => group.volume > 0).map(group => (
+                      <span key={group.category} style={{ flexGrow: group.volume / totalVolume, backgroundColor: group.color }} />
+                    ))}
+                  </div>
+                  <p><strong>{shownCategories[0].name} {percentage.format(shownCategories[0].volume / totalVolume)}</strong> of shown volume</p>
+                </>
+              ) : <p>No trading volume for the shown markets.</p>}
+            </div>
+            <div className="market-highlights" role="group" aria-label="Explore notable markets">
+              <button type="button" onClick={() => setSelectedMarket(highestVolume)} aria-pressed={selected === highestVolume}>
+                <span>Highest volume</span><strong>{compactCount(highestVolume.volume)}</strong>
+              </button>
+              <button type="button" onClick={() => setSelectedMarket(closestToEven)} aria-pressed={selected === closestToEven}>
+                <span>Closest to 50%</span><strong>{percent(closestToEven.probability)} Yes</strong>
+              </button>
+            </div>
           </div>
-        </CardContent>
-      </Card>
-      <Dialog open={!!selectedPrediction} onOpenChange={() => setSelectedPrediction(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{selectedPrediction?.question}</DialogTitle>
-            <DialogDescription>
-              Category: {selectedPrediction?.category}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4">
-            <p className="text-sm text-gray-700 leading-relaxed">
-              Predicted Likelihood: {selectedPrediction?.originalProbability}%
-            </p>
-            <p className="text-sm text-gray-700 leading-relaxed">
-              Capital at Stake: ${Math.round(selectedPrediction?.volume || 0).toLocaleString()}
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+        </>
+      ) : <p className="module-empty market-filter-empty">Select a category to see its markets.</p>}
+    </div>
   )
 }

@@ -44,20 +44,20 @@ export function MarketDeepDiveCard({ brief }: { brief: MarketDeepDive }) {
   ] as const
 
   return (
-    <Card className="mb-4 overflow-hidden" aria-label="Market deep dive">
+    <Card className="market-card" aria-label="Market deep dive">
       <header className="bg-gradient-to-br from-indigo-100 to-blue-50 px-5 py-5 sm:px-7 sm:py-6 dark:from-indigo-950 dark:to-slate-900">
         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
           <Radio className="h-4 w-4" aria-hidden="true" />
-          Market deep dive
+          Today’s story
         </p>
-        <h2 className="mt-2 max-w-3xl text-2xl font-bold tracking-tight sm:text-3xl">{brief.headline}</h2>
+        <h2 id="market-title" className="mt-2 max-w-3xl text-2xl font-bold tracking-tight sm:text-3xl">{brief.headline}</h2>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-700 sm:text-base dark:text-slate-200">
           {brief.summary}
           <InlineCitations ids={brief.summary_source_ids} sources={sources} />
         </p>
       </header>
-      <Tabs defaultValue="story" className="px-5 pb-5 pt-3 sm:px-7">
-        <TabsList aria-label="Read the market deep dive" className="h-auto max-w-full flex-wrap justify-start">
+      <Tabs defaultValue="story" className="market-details">
+        <TabsList aria-label="Read the market deep dive" className="market-tabs">
           {sections.map(section => (
             <TabsTrigger key={section.id} value={section.id}>{section.label}</TabsTrigger>
           ))}

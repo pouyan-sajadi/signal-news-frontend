@@ -1,90 +1,92 @@
-import { Component, type ComponentProps, type PropsWithChildren } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Rocket } from 'lucide-react'
-import { ProductHuntSankeyChart } from '@/components/charts/ProductHuntSankeyChart'
+import { useState } from 'react'
+import { ArrowUpRight, ChevronDown } from 'lucide-react'
+import type { LaunchCategory } from '@/api/dashboard'
 
-type SankeyData = ComponentProps<typeof ProductHuntSankeyChart>['data'];
+type Rect = { left: number; top: number; width: number; height: number }
+type Tile = Rect & { category: LaunchCategory }
 
-interface ProductHuntInsightsProps {
-  data: {
-    product_hunt_tag_connections: SankeyData | null;
-  } | null;
+const shortLabels: Record<string, string> = {
+  'Developer Tools': 'Dev tools',
+  'Marketing & Sales': 'Marketing',
+  'Health & Fitness': 'Health',
+  'Data & Analytics': 'Analytics',
+}
+const colors = ['#cbd9ff', '#dbe7ff', '#bcd4ea', '#d4d7f2', '#d5e8e8', '#e0e8f8']
+
+function packTiles(items: LaunchCategory[], rect: Rect): Tile[] {
+  if (items.length <= 1) return items.map(category => ({ ...rect, category }))
+
+  const size = items.reduce((total, category) => total + category.products.length, 0)
+  let split = 1
+  let weight = items[0].products.length
+  while (split < items.length - 1) {
+    const next = weight + items[split].products.length
+    if (Math.abs(next - size / 2) >= Math.abs(weight - size / 2)) break
+    weight = next
+    split += 1
+  }
+
+  // Split the longer edge of the treemap in proportion to category membership.
+  const horizontal = rect.width * 1.7 >= rect.height
+  const first = { ...rect }
+  const second = { ...rect }
+  if (horizontal) {
+    first.width *= weight / size
+    second.width -= first.width
+    second.left += first.width
+  } else {
+    first.height *= weight / size
+    second.height -= first.height
+    second.top += first.height
+  }
+  return [...packTiles(items.slice(0, split), first), ...packTiles(items.slice(split), second)]
 }
 
-function ProductHuntFallback({ message }: { message: string }) {
-  return (
-    <Card className="h-full bg-white/70 backdrop-blur-sm border-0 shadow-xl flex items-center justify-center">
-      <p className="text-muted-foreground">{message}</p>
-    </Card>
-  );
-}
+export function ProductHuntInsights({ categories }: { categories: LaunchCategory[] }) {
+  const [selectedName, setSelectedName] = useState<string>()
+  const sorted = [...categories].sort((a, b) => b.products.length - a.products.length)
+  const selected = sorted.find(category => category.name === selectedName) ?? sorted[0]
+  const tiles = packTiles(sorted, { left: 0, top: 0, width: 100, height: 100 })
+  const uniqueProducts = new Set(sorted.flatMap(category => category.products.map(product => product.url))).size
 
-class ProductHuntErrorBoundary extends Component<PropsWithChildren, { hasError: boolean }> {
-  state = { hasError: false };
-
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return <ProductHuntFallback message="Product Hunt chart is unavailable." />;
-    }
-
-    return this.props.children;
-  }
-}
-
-function ProductHuntInsightsContent({ data }: ProductHuntInsightsProps) {
-  const sankeyData = data?.product_hunt_tag_connections;
-  if (!sankeyData || !Array.isArray(sankeyData.nodes) || !Array.isArray(sankeyData.links)) {
-    return <ProductHuntFallback message="No Product Hunt data available." />;
-  }
-
-  const nodesById = new Map<string, SankeyData['nodes'][number]>();
-  for (const node of sankeyData.nodes) {
-    if (typeof node?.id === 'string' && node.id.length > 0) {
-      nodesById.set(node.id, node);
-    }
-  }
-
-  const links = sankeyData.links.filter(link =>
-    link &&
-    nodesById.has(link.source) &&
-    nodesById.has(link.target) &&
-    link.source !== link.target &&
-    Number.isFinite(link.value) &&
-    link.value > 0
-  );
-  if (links.length === 0) {
-    return <ProductHuntFallback message="No Product Hunt connections to display." />;
-  }
-
-  const linkedIds = new Set(links.flatMap(({ source, target }) => [source, target]));
-  const nodes = [...nodesById.values()].filter(node => linkedIds.has(node.id));
+  if (!selected) return <p className="module-empty">No launch categories in this update.</p>
 
   return (
-    <Card className="h-full bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-      <CardHeader className="pb-1">
-        <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
-          <div className="p-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg">
-            <Rocket className="h-5 w-5 text-white" />
-          </div>
-          Product Hunt Category Flow
-        </CardTitle>
-        <p className="text-sm text-gray-600">Which products are catching customers’ attention?</p>
-      </CardHeader>
-      <CardContent className="pt-1 h-[calc(100%-80px)]">
-        <ProductHuntSankeyChart data={{ nodes, links }} />
-      </CardContent>
-    </Card>
-  );
-}
-
-export function ProductHuntInsights(props: ProductHuntInsightsProps) {
-  return (
-    <ProductHuntErrorBoundary>
-      <ProductHuntInsightsContent {...props} />
-    </ProductHuntErrorBoundary>
-  );
+    <div className="chart-body">
+      <div className="treemap-summary"><strong>{uniqueProducts}</strong> {uniqueProducts === 1 ? 'product' : 'products'} across {sorted.length} {sorted.length === 1 ? 'category' : 'categories'}</div>
+      <div className="treemap" role="group" aria-label="Products by category, sized by count">
+        {tiles.map(({ category, left, top, width, height }, index) => {
+          const amount = category.products.length
+          return (
+            <div key={category.name} className="treemap-region" style={{
+              left: `${left}%`, top: `${top}%`, width: `${width}%`, height: `${height}%`,
+            }}>
+              <button type="button" className="treemap-tile"
+                aria-label={`${category.name}, ${amount} ${amount === 1 ? 'product' : 'products'}`}
+                aria-pressed={selected.name === category.name} title={category.name}
+                style={{ backgroundColor: colors[index % colors.length] }}
+                onClick={() => setSelectedName(category.name)}>
+                <span className="treemap-label">{shortLabels[category.name] || category.name}</span>
+                <strong>{amount}</strong>
+              </button>
+            </div>
+          )
+        })}
+      </div>
+      <div className="chart-selection" aria-live="polite">
+        <strong>{selected.name}</strong>
+        <span>{selected.products.length} {selected.products.length === 1 ? 'product' : 'products'}</span>
+      </div>
+      <details key={selected.name} className="chart-links">
+        <summary>View products <ChevronDown size={15} aria-hidden="true" /></summary>
+        <ul>{selected.products.map(product => (
+          <li key={product.url}>
+            <a href={product.url} target="_blank" rel="noopener noreferrer">{product.title}<ArrowUpRight size={14} aria-hidden="true" /></a>
+            {product.description && <p className="chart-item-description">{product.description}</p>}
+          </li>
+        ))}</ul>
+      </details>
+      <p className="chart-note">A product can appear in two categories.</p>
+    </div>
+  )
 }

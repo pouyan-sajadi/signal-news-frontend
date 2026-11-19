@@ -1,5 +1,4 @@
-import { useState } from "react"
-import { Search, Sparkles } from "lucide-react"
+import { Search } from "lucide-react"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Card } from "../ui/card"
@@ -23,8 +22,6 @@ export function TopicInput({
   preferences,
   onPreferencesChange
 }: TopicInputProps) {
-  const [isFocused, setIsFocused] = useState(false)
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!disabled) {
@@ -33,19 +30,16 @@ export function TopicInput({
   }
 
   return (
-    <Card className="p-6 bg-white/70 dark:bg-slate-800/70 border-0 shadow-lg">
-      <form onSubmit={handleSubmit} className="space-y-6">
+    <Card className="p-4 sm:p-5 bg-card shadow-none">
+      <form onSubmit={handleSubmit} className="space-y-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            placeholder="Enter any news topic... (e.g., 'AI developments in healthcare', 'Climate change policies 2025')"
-            className={`pl-10 h-14 text-base sm:text-lg placeholder:text-sm sm:placeholder:text-base transition-all duration-200 ${
-              isFocused ? 'ring-2 ring-blue-500 border-blue-500' : ''
-            }`}
+            aria-label="Report topic"
+            placeholder="What do you want to understand?"
+            className="pl-10 h-12 placeholder:text-sm"
             disabled={disabled}
           />
         </div>
@@ -56,15 +50,14 @@ export function TopicInput({
           onChange={onPreferencesChange}
         />
 
-        <div className="flex justify-center">
+        <div className="flex justify-end">
           <Button
             type="submit"
             size="lg"
-            className={`bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 gap-2 ${!value.trim() || disabled ? '' : 'animate-pulse'}`}
+            className="px-5"
             disabled={!value.trim() || disabled}
           >
-            <Sparkles className="h-5 w-5" />
-            {disabled ? "Generating..." : "Generate Report"}
+            {disabled ? "Generating..." : "Generate report"}
           </Button>
         </div>
       </form>
