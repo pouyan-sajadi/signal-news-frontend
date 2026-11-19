@@ -1,190 +1,117 @@
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Badge } from '@/components/ui/badge'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
-import { GitBranch, TrendingUp, Star, ExternalLink } from 'lucide-react'
-import { useToast } from '@/hooks/useToast'
+import { useState, type MouseEvent } from 'react'
+import { ArrowUpRight, ChevronDown } from 'lucide-react'
+import type { GitHubLanguage } from '@/api/dashboard'
+import { count } from './chartScale'
 
-interface GitHubTrendingProps {
-  data: {
-    languages: Array<{
-      name: string
-      count: number
-      color: string
-      repositories: any[]
-    }>
-  } | null
-}
+const metrics = [
+  { id: 'count', title: 'Repositories' },
+  { id: 'starsToday', title: 'Stars today' },
+] as const
 
-export function GitHubTrending({ data }: GitHubTrendingProps) {
-  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null)
-  const [repositories, setRepositories] = useState<any[]>([])
-  const { toast } = useToast()
+const colors = ['#2456d8', '#078171', '#8757b3', '#bd581b', '#b24371', '#567a37', '#63728e']
+const ringHole = 0.64
+const share = new Intl.NumberFormat('en', { style: 'percent', maximumFractionDigits: 1 })
 
-  if (!data) return null
+export function GitHubTrending({ languages }: { languages: GitHubLanguage[] }) {
+  const [metric, setMetric] = useState<(typeof metrics)[number]>(metrics[0])
+  const [selectedName, setSelectedName] = useState<string>()
+  const ranked = [...languages].sort((a, b) => (b[metric.id] ?? 0) - (a[metric.id] ?? 0))
+  const languageColors = new Map(languages.map((language, index) => [language.name, colors[index % colors.length]]))
+  const total = ranked.reduce((sum, language) => sum + (language[metric.id] ?? 0), 0)
+  let angle = 0
+  const segments = ranked.flatMap(language => {
+    const value = language[metric.id]
+    if (!value || total <= 0) return []
 
-  const totalRepos = data.languages.reduce((sum, lang) => sum + lang.count, 0)
+    const start = angle
+    angle += value / total * 360
+    return [{ language, value, start, end: angle, color: languageColors.get(language.name)! }]
+  })
+  const selected = segments.find(segment => segment.language.name === selectedName) ?? segments[0]
 
-  const chartData = data.languages.map(lang => ({
-    ...lang,
-    percentage: ((lang.count / totalRepos) * 100).toFixed(1)
-  }))
-
-  const handleSliceClick = (entry: any) => {
-    setSelectedLanguage(entry.name)
-    setRepositories(entry.repositories)
+  if (!languages.some(language => language.count > 0)) {
+    return <p className="module-empty">No repository activity in this update.</p>
   }
 
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload
-      return (
-        <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg p-3 shadow-lg">
-          <p className="font-semibold text-gray-900">{data.name}</p>
-          <p className="text-sm text-gray-600">
-            {data.count.toLocaleString()} repositories
-          </p>
-          <p className="text-sm text-gray-600">
-            {data.percentage}% of total
-          </p>
-          <p className="text-xs text-blue-600 mt-1">
-            Click for details of different repos
-          </p>
-        </div>
-      )
-    }
-    return null
+  const ring = segments.map(({ color, start, end }) => {
+    const gap = segments.length > 1 ? Math.min(.65, (end - start) / 3) : 0
+    return `white ${start}deg ${start + gap}deg, ${color} ${start + gap}deg ${end - gap}deg, white ${end - gap}deg ${end}deg`
+  }).join(', ')
+
+  function selectSlice(event: MouseEvent<HTMLDivElement>) {
+    const { left, top, width, height } = event.currentTarget.getBoundingClientRect()
+    const x = event.clientX - left - width / 2
+    const y = event.clientY - top - height / 2
+    const radius = width / 2
+    const distance = Math.hypot(x, y)
+    if (distance < radius * ringHole || distance > radius) return
+
+    const bearing = (Math.atan2(x, -y) * 180 / Math.PI + 360) % 360
+    const slice = segments.find(segment => bearing >= segment.start && bearing < segment.end)
+    if (slice) setSelectedName(slice.language.name)
   }
-
-  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, name, percentage }: any) => {
-    const RADIAN = Math.PI / 180;
-    // Move the label closer to the center by adjusting the multiplier (e.g., from 0.5 to 0.3)
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.4;
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-    if (parseFloat(percentage) < 5) return null;
-
-    return (
-      <text
-        x={x}
-        y={y}
-        fill="black" // Change fill color from "white" to "black"
-        textAnchor="middle" // Use "middle" for better centering
-        dominantBaseline="central"
-        fontSize="13"
-        fontWeight="bold"
-      >
-        {`${percentage}%`}
-      </text>
-    );
-  };
 
   return (
-    <>
-      <Card className="h-full bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-        <CardHeader className="pb-1">
-          <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
-            <div className="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg">
-              <GitBranch className="h-5 w-5 text-white" />
-            </div>
-            Developer Activity
-          </CardTitle>
-          <p className="text-sm text-gray-600">Which programming languages are gaining momentum in the open-source?</p>
-        </CardHeader>
-        <CardContent className="pt-1">
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={chartData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={renderCustomizedLabel}
-                  innerRadius={20}
-                  outerRadius={70}
-                  paddingAngle={2}
-                  dataKey="count"
-                  onClick={handleSliceClick}
-                >
-                  {chartData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={entry.color}
-                      className="hover:opacity-80 transition-opacity cursor-pointer"
-                    />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-                <Legend
-                  verticalAlign="bottom"
-                  height={36}
-                  formatter={(value, entry: any) => (
-                    <span style={{ color: entry.color, fontSize: '13px' }}>
-                      {value}
-                    </span>
-                  )}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-            <TrendingUp className="h-4 w-4 text-green-500" />
-            <span>Based on {totalRepos.toLocaleString()} repositories</span>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="chart-body">
+      <div className="metric-switch" role="group" aria-label="Breakdown by">
+        {metrics.map(option => (
+          <button key={option.id} type="button" aria-pressed={metric.id === option.id}
+            disabled={languages.every(language => !language[option.id])}
+            onClick={() => { setMetric(option); setSelectedName(undefined) }}>
+            {option.title}
+          </button>
+        ))}
+      </div>
 
-      <Dialog open={!!selectedLanguage} onOpenChange={() => setSelectedLanguage(null)}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-white">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-gray-900">
-              {selectedLanguage} Repositories
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {repositories.map((repo, index) => (
-              <div
-                key={index}
-                className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors bg-gray-50"
-              >
-                
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{repo.title}</h3>
-                <div className="flex items-start justify-between mb-2">
-                  <div></div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1 text-yellow-600">
-                      <Star className="h-4 w-4" />
-                      <span className="text-sm font-medium">{repo.stars.toLocaleString()}</span>
-                    </div>
-                    <a
-                      href={repo.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 transition-colors"
-                      onClick={() => toast({
-                        title: "Opening Repository",
-                        description: `Navigating to ${repo.title}`,
-                      })}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </div>
-                </div>
-                <p className="text-gray-600 text-sm leading-relaxed">{repo.description}</p>
-                <div className="mt-3">
-                  <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                    {selectedLanguage}
-                  </Badge>
-                </div>
+      {selected && (
+        <>
+          <div className="github-breakdown">
+            <div className="github-donut" aria-hidden="true" onClick={selectSlice}>
+              <div className="github-ring" style={{ backgroundImage: `conic-gradient(${ring})` }} />
+              <div className="github-ring-selection" style={{
+                backgroundImage: `conic-gradient(transparent 0deg ${selected.start}deg, ${selected.color} ${selected.start}deg ${selected.end}deg, transparent ${selected.end}deg 360deg)`,
+              }} />
+              <div className="github-donut-total">
+                <strong>{count.format(total)}</strong>
+                <span>{metric.title}</span>
               </div>
-            ))}
+            </div>
+            <div className="github-legend" role="group" aria-label={`Language breakdown across ${count.format(total)} ${metric.title.toLowerCase()}`}>
+              {segments.map(segment => (
+                <button key={segment.language.name} type="button"
+                  aria-label={`${segment.language.name}, ${count.format(segment.value)} ${metric.id === 'count' && segment.value === 1 ? 'repository' : metric.title.toLowerCase()}, ${share.format(segment.value / total)}`}
+                  aria-pressed={selected === segment} onClick={() => setSelectedName(segment.language.name)}>
+                  <span className="chart-swatch" style={{ backgroundColor: segment.color }} aria-hidden="true" />
+                  <span className="github-language">{segment.language.name}</span>
+                  <span className="github-share">{share.format(segment.value / total)}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
-    </>
+
+          <div className="chart-selection" aria-live="polite">
+            <strong>{selected.language.name}</strong>
+            <span>
+              {count.format(selected.language.count)} {selected.language.count === 1 ? 'repo' : 'repos'}
+              {selected.language.starsToday !== null && ` · ${count.format(selected.language.starsToday)} stars today`}
+            </span>
+          </div>
+          {selected.language.repositories.length > 0 && (
+            <details key={selected.language.name} className="chart-links">
+              <summary>View repositories <ChevronDown size={15} aria-hidden="true" /></summary>
+              <ul>{selected.language.repositories.map(repo => (
+                <li key={repo.url}>
+                  <div className="chart-item-title">
+                    <a href={repo.url} target="_blank" rel="noopener noreferrer">{repo.title}<ArrowUpRight size={14} aria-hidden="true" /></a>
+                    {repo.starsToday !== null && <span title="Stars today">+{count.format(repo.starsToday)} stars</span>}
+                  </div>
+                  {repo.description && <p className="chart-item-description">{repo.description}</p>}
+                </li>
+              ))}</ul>
+            </details>
+          )}
+        </>
+      )}
+    </div>
   )
 }

@@ -3,7 +3,6 @@ import { ChevronDown, ChevronUp, Settings2, HelpCircle } from "lucide-react"
 import { Button } from "../ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Slider } from "../ui/slider"
-import { Badge } from "../ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip"
 import { ReportPreferences } from "../../pages/HomePage"
 
@@ -45,33 +44,23 @@ export function PreferencesPanel({ preferences, onChange }: PreferencesPanelProp
   return (
     <TooltipProvider>
       <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-border/50 rounded-lg">
-        <div className="p-4">
+        <div className="px-3">
           <Button
             type="button"
             variant="ghost"
+            aria-expanded={isExpanded}
             onClick={() => setIsExpanded(!isExpanded)}
             className="w-full justify-between h-auto p-0"
           >
             <div className="flex items-center gap-2">
               <Settings2 className="h-4 w-4" />
-              <span className="font-medium">Customize Report</span>
-              <div className="flex flex-wrap gap-1">
-                <Badge variant="outline" className="text-xs">
-                  {preferences.focus}
-                </Badge>
-                <Badge variant="outline" className="text-xs">
-                  {depthLabels[preferences.depth as keyof typeof depthLabels]}
-                </Badge>
-                <Badge variant="outline" className="text-xs">
-                  {preferences.tone}
-                </Badge>
-              </div>
+              <span className="font-medium">Report preferences</span>
             </div>
             {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
 
           {isExpanded && (
-            <div className="mt-6 space-y-6">
+            <div className="mt-3 pb-4 space-y-6">
               <div className="grid md:grid-cols-3 gap-6">
                 {/* Focus */}
                 <div className="space-y-2">

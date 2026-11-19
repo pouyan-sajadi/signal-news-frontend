@@ -1,107 +1,167 @@
-import api from './api';
-import { parseMarketDeepDive } from '@/types/marketDeepDive';
-
-interface NewsBriefSource {
-  title: string;
-  source: string;
-  url: string;
-}
+import api from './api'
+import { parseMarketDeepDive } from '@/types/marketDeepDive'
 
 export interface NewsBriefStory {
-  title: string;
-  summary: string;
-  sources: NewsBriefSource[];
+  title: string
+  summary: string
+  sources: Array<{ title: string; source: string; url: string }>
 }
 
-function getNewsBriefSources(value: unknown): NewsBriefSource[] {
-  if (!Array.isArray(value)) return [];
+type CatalogItem = { title: string; url: string; description: string }
+type Repository = CatalogItem & { starsToday: number | null }
+export type GitHubLanguage = {
+  name: string
+  count: number
+  starsToday: number | null
+  repositories: Repository[]
+}
+export type LaunchCategory = { name: string; products: CatalogItem[] }
+export type Prediction = {
+  question: string
+  probability: number
+  volume: number
+  category: string
+  url: string | null
+}
 
-  const sources = new Map<string, NewsBriefSource>();
-  for (const article of value) {
-    if (typeof article?.title !== 'string' || !article.title.trim() || typeof article?.url !== 'string') continue;
+function record(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+}
 
-    try {
-      const url = new URL(article.url);
-      if (url.protocol !== 'https:' && url.protocol !== 'http:') continue;
-      if (url.username || url.password || sources.has(url.href)) continue;
-      sources.set(url.href, {
-        title: article.title.trim(),
-        source: typeof article.source === 'string' ? article.source.trim() : '',
-        url: url.href,
-      });
-    } catch {
-      // Skip malformed links without hiding the story.
+const list = (value: unknown): unknown[] => Array.isArray(value) ? value : []
+const nonNegative = (value: unknown) =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
+const label = (value: unknown) => typeof value === 'string' ? value.trim() : ''
+
+function shortDescription(value: unknown) {
+  const description = label(value).replace(/\s+/g, ' ')
+  if (description.length <= 170) return description
+
+  const excerpt = description.slice(0, 171)
+  const sentenceEnd = excerpt.match(/^.*[.!?](?=\s)/)?.[0]
+  if (sentenceEnd && sentenceEnd.length >= 45) return sentenceEnd
+  const wordEnd = excerpt.lastIndexOf(' ')
+  return `${excerpt.slice(0, wordEnd > 0 ? wordEnd : 170)}…`
+}
+
+function webUrl(value: unknown) {
+  if (typeof value !== 'string') return null
+  try {
+    const url = new URL(value)
+    if (['http:', 'https:'].includes(url.protocol) && !url.username && !url.password) return url.href
+  } catch {
+    return null
+  }
+  return null
+}
+
+function getNewsBriefSources(value: unknown): NewsBriefStory['sources'] {
+  const sources = new Map<string, NewsBriefStory['sources'][number]>()
+  for (const entry of list(value)) {
+    const article = record(entry)
+    const title = label(article.title)
+    const url = webUrl(article.url)
+    if (title && url && !sources.has(url)) {
+      sources.set(url, { title, url, source: label(article.source) })
     }
   }
-
-  return [...sources.values()];
+  return [...sources.values()]
 }
 
-export const getDashboardData = async () => {
-  try {
-    const response = await api.get('/api/tech-pulse/latest');
-    const pulseData = response.data.pulse_data;
+function getLanguages(value: unknown): GitHubLanguage[] {
+  const distribution = record(value)
+  const dataset = record(list(distribution.datasets)[0])
+  const counts = list(dataset.data)
+  const details = list(dataset.hoverData)
+  return list(distribution.labels).flatMap((entry, index) => {
+    const name = label(entry)
+    const count = nonNegative(counts[index])
+    if (!name || count === null || !Number.isInteger(count)) return []
 
-    const rawCreatedAt = response.data.created_at;
+    const detail = record(details[index])
+    const repositories = list(detail.repositories).flatMap(item => {
+      const repo = record(item)
+      const title = label(repo.title)
+      const url = webUrl(repo.url)
+      if (!title || !url) return []
+      return [{ title, url, description: shortDescription(repo.description), starsToday: nonNegative(repo.stars_today) }]
+    })
+    return [{ name, count, starsToday: nonNegative(detail.stars_today), repositories }]
+  })
+}
 
-    // The backend sends a timestamp like "2025-08-04 07:29:31.201333+00".
-    // We must convert it to a valid ISO 8601 format that JS `new Date()` can parse.
-    // 1. Replace the space with a 'T'.
-    // 2. Remove the microseconds, as they can cause parsing issues.
-    const formattedTimestamp = rawCreatedAt
-      ? rawCreatedAt.replace(' ', 'T').replace(/\.\d{6}/, '')
-      : null;
+function getLaunchCategories(value: unknown): LaunchCategory[] {
+  return list(record(value).nodes).flatMap(entry => {
+    const category = record(entry)
+    const name = label(category.id)
+    if (!name) return []
 
-    const isValidDate = formattedTimestamp && !isNaN(new Date(formattedTimestamp).getTime());
+    const products = new Map<string, CatalogItem>()
+    for (const item of list(category.products)) {
+      const product = record(item)
+      const title = label(product.title)
+      const url = webUrl(product.url)
+      if (title && url) products.set(url, { title, url, description: shortDescription(product.description) })
+    }
+    return products.size ? [{ name, products: [...products.values()] }] : []
+  })
+}
 
-    // This is the adapter logic. It transforms the single backend response
-    // into the five separate data structures the frontend components expect.
-    const transformedData = {
-      marketDeepDive: parseMarketDeepDive(pulseData.market_deep_dive),
-      github: {
-        languages: pulseData.github_language_distribution.labels.map((label: string, index: number) => ({
-          name: label,
-          count: pulseData.github_language_distribution.datasets[0].data[index],
-          color: pulseData.github_language_distribution.datasets[0].backgroundColor[index],
-          repositories: pulseData.github_language_distribution.datasets[0].hoverData[index].repositories,
-        })),
-      },
-      productHunt: {
-        product_hunt_tag_connections: pulseData.product_hunt_tag_connections,
-      },
-      news: {
-        hot_topics: pulseData.news_word_cloud.hot_topics.map((topic: {
-          topic: string;
-          summary: string;
-          sources?: unknown;
-        }): NewsBriefStory => ({
-          title: topic.topic,
-          summary: topic.summary,
-          sources: getNewsBriefSources(topic.sources),
-        })),
-        created_at: isValidDate ? formattedTimestamp : new Date().toISOString(),
-      },
-      keywords: {
-        keywords: pulseData.news_word_cloud.keywords.map((keyword: any) => ({
-          word: keyword.text,
-          frequency: keyword.value,
-          trend: 'up', // Mocked data
-          desc: keyword.desc,
-        })),
-      },
-      predictions: {
-        predictions: pulseData.manifold_predictions_bubble_plot.datasets[0].data.map((prediction: any) => ({
-          question: prediction.label,
-          probability: Math.round(prediction.x * 100),
-          traderInterest: prediction.y,
-          category: prediction.category,
-        })),
-      },
-    };
+function getPredictions(value: unknown): Prediction[] {
+  const dataset = record(list(record(value).datasets)[0])
+  return list(dataset.data).flatMap(entry => {
+    const row = record(entry)
+    const question = label(row.label)
+    const probability = nonNegative(row.x)
+    const volume = nonNegative(row.y)
+    if (!question || probability === null || probability > 1 || volume === null) return []
 
-    return transformedData;
-  } catch (error: any) {
-    console.error("Error fetching or transforming dashboard data:", error);
-    throw new Error(error?.response?.data?.message || error.message);
+    return [{
+      question,
+      probability: probability * 100,
+      volume,
+      category: label(row.category) || 'Other',
+      url: webUrl(row.url),
+    }]
+  })
+}
+
+function adaptSnapshot(response: unknown) {
+  const root = record(response)
+  const pulse = record(root.pulse_data)
+  const cloud = record(pulse.news_word_cloud)
+  const hotTopics = list(cloud.hot_topics).flatMap((entry): NewsBriefStory[] => {
+    const topic = record(entry)
+    const title = label(topic.topic)
+    const summary = label(topic.summary)
+    return title && summary ? [{ title, summary, sources: getNewsBriefSources(topic.sources) }] : []
+  })
+  const keywords = list(cloud.keywords).flatMap(entry => {
+    const keyword = record(entry)
+    const word = label(keyword.text)
+    const score = nonNegative(keyword.value)
+    return word && score !== null && score > 0 && score <= 100
+      ? [{ word, score, description: label(keyword.desc) }]
+      : []
+  })
+  const rawDate = label(root.created_at)
+
+  return {
+    marketDeepDive: parseMarketDeepDive(pulse.market_deep_dive),
+    languages: getLanguages(pulse.github_language_distribution),
+    launchCategories: getLaunchCategories(pulse.product_hunt_tag_connections),
+    hotTopics,
+    keywords,
+    predictions: getPredictions(pulse.manifold_predictions_bubble_plot),
+    createdAt: rawDate && !Number.isNaN(new Date(rawDate).getTime()) ? rawDate : null,
   }
-};
+}
+
+export async function getDashboardData() {
+  const response = import.meta.env.DEV
+    ? (await import('@/data/pulse-fixture-2026-11-18.json')).default
+    : (await api.get('/api/tech-pulse/latest')).data
+  return adaptSnapshot(response)
+}
