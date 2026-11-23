@@ -104,17 +104,16 @@ export function HomePage() {
         if (controller.signal.aborted) return
         storePendingReport(null)
         setPendingReport(null)
-        void saveHistory(topic, preferences, finalReport.agent_details.editing, jobId)
-          .then(() => setReportCount(count => count + 1))
-
         const report: Report = {
           job_id: jobId,
           user_preferences: preferences,
           final_report_data: finalReport.agent_details,
+          selected_source_count: finalReport.agent_details.selection?.length,
           topic,
           refined_topic: finalReport.refined_topic || topic,
           timestamp: new Date().toISOString(),
         }
+        void saveHistory(report).then(() => setReportCount(count => count + 1))
         navigate(`/report/${jobId}`, { state: { report } })
       })
       .catch(error => {
