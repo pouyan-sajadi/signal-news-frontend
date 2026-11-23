@@ -35,6 +35,7 @@ export function TopicInput({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input
+            id="report-topic"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             aria-label="Report topic"

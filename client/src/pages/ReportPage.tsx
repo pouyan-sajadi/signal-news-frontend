@@ -17,6 +17,7 @@ export interface Report {
   job_id: string;
   topic: string;
   refined_topic?: string; // Make it optional for backward compatibility
+  selected_source_count?: number;
   user_preferences: {
     focus: string;
     depth: number;
@@ -216,6 +217,9 @@ export function ReportPage() {
     )
   }
 
+  // Older history entries discarded the selection, so an empty legacy array is ambiguous.
+  const sourceCount = report.selected_source_count ?? (report.final_report_data.selection?.length || undefined);
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Header */}
@@ -268,19 +272,19 @@ export function ReportPage() {
           </div>
           
           <p className="text-sm text-muted-foreground">
-            Generated on {new Date(report.timestamp).toLocaleDateString()} • 
-            {report.final_report_data.selection.length} sources selected
+            Generated on {new Date(report.timestamp).toLocaleDateString()}
+            {sourceCount !== undefined && ` • ${sourceCount} ${sourceCount === 1 ? "source" : "sources"} selected`}
           </p>
         </div>
       </Card>
 
       {/* Nerd Stats */}
-      {showStats && (
+      {showStats && sourceCount !== undefined && (
         <div className="mb-8">
           <NerdStats 
             searchQueries={report.final_report_data.search.map((item: any) => item.query || item.title || JSON.stringify(item))}
             sourcesAnalyzed={report.final_report_data.search.length}
-            sourcesSelected={report.final_report_data.selection.length}
+            sourcesSelected={sourceCount}
             processingTime={0} // Placeholder, as this is not available in the current backend response
             generatedAt={report.timestamp}
             sources={report.final_report_data.selection.map((item: any) => ({ title: item.title, url: item.link, domain: new URL(item.link).hostname }))}

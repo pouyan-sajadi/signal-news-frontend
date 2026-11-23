@@ -14,9 +14,10 @@ interface ReportHistoryProps {
   isSidebar?: boolean;
   isSidebarOpen?: boolean;
   reportCount: number;
+  onOpenReportForm: () => void;
 }
 
-export function ReportHistory({ isSidebar = false, isSidebarOpen = true, reportCount }: ReportHistoryProps) {
+export function ReportHistory({ isSidebar = false, isSidebarOpen = true, reportCount, onOpenReportForm }: ReportHistoryProps) {
   const [history, setHistory] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -136,7 +137,7 @@ export function ReportHistory({ isSidebar = false, isSidebarOpen = true, reportC
               Generate your first comprehensive news report and it will appear here.
             </p>
             {isSidebar && (
-              <Button onClick={() => navigate('/')} className="mt-4">
+              <Button onClick={onOpenReportForm} className="mt-4">
                 Generate Report
               </Button>
             )}

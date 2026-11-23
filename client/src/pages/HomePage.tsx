@@ -69,8 +69,9 @@ export function HomePage() {
   const navigationType = useNavigationType()
   const [dashboardReady, setDashboardReady] = useState(false)
   const anchor = location.hash.slice(1)
+  const focusReportTopic = anchor === 'top-search-section' && location.state?.focusReportTopic === true
   const contentAboveAnchorCanShift = anchor === 'dashboard-section' || anchor === 'top-search-section'
-  const canScrollToAnchor = dashboardReady || !contentAboveAnchorCanShift
+  const canScrollToAnchor = focusReportTopic || dashboardReady || !contentAboveAnchorCanShift
 
   useEffect(() => {
     if (!canScrollToAnchor) return
@@ -78,14 +79,15 @@ export function HomePage() {
     const frame = requestAnimationFrame(() => {
       const target = document.getElementById(anchor)
       if (target) {
-        target.focus({ preventScroll: true })
+        const focusTarget = focusReportTopic ? document.getElementById('report-topic') ?? target : target
+        focusTarget.focus({ preventScroll: true })
         target.scrollIntoView({ behavior: navigationType === 'POP' ? 'instant' : 'auto' })
       } else {
         window.scrollTo({ top: 0, behavior: 'instant' })
       }
     })
     return () => cancelAnimationFrame(frame)
-  }, [anchor, canScrollToAnchor, location.key, navigationType])
+  }, [anchor, canScrollToAnchor, focusReportTopic, location.key, navigationType])
 
   useEffect(() => {
     if (!pendingReport) return
@@ -104,17 +106,16 @@ export function HomePage() {
         if (controller.signal.aborted) return
         storePendingReport(null)
         setPendingReport(null)
-        void saveHistory(topic, preferences, finalReport.agent_details.editing, jobId)
-          .then(() => setReportCount(count => count + 1))
-
         const report: Report = {
           job_id: jobId,
           user_preferences: preferences,
           final_report_data: finalReport.agent_details,
+          selected_source_count: finalReport.agent_details.selection?.length,
           topic,
           refined_topic: finalReport.refined_topic || topic,
           timestamp: new Date().toISOString(),
         }
+        void saveHistory(report).then(() => setReportCount(count => count + 1))
         navigate(`/report/${jobId}`, { state: { report } })
       })
       .catch(error => {
