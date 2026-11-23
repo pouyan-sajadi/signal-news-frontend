@@ -1,13 +1,9 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, useLocation } from "react-router-dom"
-import { ArrowLeft, Share2, Download, Bookmark, MoreHorizontal } from "lucide-react"
+import { ArrowLeft, Link2, Download } from "lucide-react"
 import { Button } from "../components/ui/button"
-import { Card } from "../components/ui/card"
 import { Badge } from "../components/ui/badge"
 import { ReportContent } from "../components/report/ReportContent"
-import { NerdStats } from "../components/report/NerdStats"
-import { RelatedTopics } from "../components/report/RelatedTopics"
-import { FinalReportData } from "../api/reports"
 import { useToast } from "../hooks/useToast"
 
 import { getReport } from "../api/reports";
@@ -40,7 +36,6 @@ export function ReportPage() {
   const { toast } = useToast();
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showStats, setShowStats] = useState(false);
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -103,15 +98,20 @@ export function ReportPage() {
     fetchReport();
   }, [id, navigate, toast, location.state]);
 
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href)
-    toast({
-      title: "Link Copied",
-      description: "Report link copied to clipboard"
-    })
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      toast({ title: "Report link copied" })
+    } catch {
+      toast({
+        title: "Couldn’t copy the link",
+        description: "Copy the address from your browser.",
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     if (!report) {
       toast({
         title: "Export Failed",
@@ -174,32 +174,29 @@ export function ReportPage() {
     tagsContainer.appendChild(createTag(report.user_preferences.tone));
     pdfContainer.appendChild(tagsContainer);
 
-    // 4. Clone the report content and remove the progress bar
-    const clonedContent = reportContentElement.cloneNode(true) as HTMLElement;
-    const progressBar = clonedContent.querySelector(".p-4.border-b");
-    if (progressBar) {
-      progressBar.remove();
-    }
-    pdfContainer.appendChild(clonedContent);
+    pdfContainer.appendChild(reportContentElement.cloneNode(true));
 
     // Generate PDF from the new container
-    html2pdf().from(pdfContainer).set({
-      margin: [15, 15, 15, 15],
-      filename: `${report.topic.replace(/\s+/g, "_").toLowerCase()}_report.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, logging: true, dpi: 192, letterRendering: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).save();
-
-    toast({
-      title: "Export Started",
-      description: "Your report is being generated as a PDF.",
-    });
+    try {
+      await html2pdf().from(pdfContainer).set({
+        margin: [15, 15, 15, 15],
+        filename: report.topic.replace(/\s+/g, "_").toLowerCase() + "_report.pdf",
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).save();
+    } catch {
+      toast({
+        title: "Couldn’t export the report",
+        description: "Try exporting the PDF again.",
+        variant: "destructive",
+      })
+    }
   };
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="report-page">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-1/3"></div>
           <div className="h-4 bg-muted rounded w-2/3"></div>
@@ -211,7 +208,7 @@ export function ReportPage() {
 
   if (!report) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-4xl text-center">
+      <div className="report-page">
         <h1 className="text-2xl font-bold text-muted-foreground">Report not found</h1>
       </div>
     )
@@ -221,90 +218,40 @@ export function ReportPage() {
   const sourceCount = report.selected_source_count ?? (report.final_report_data.selection?.length || undefined);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <Button 
-          variant="ghost" 
-          onClick={() => navigate("/")}
-          className="gap-2"
-        >
+    <article className="report-page">
+      <div className="report-actions">
+        <Button variant="ghost" onClick={() => navigate("/")} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
-          Back to Home
+          Back to home
         </Button>
-        
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleShare} className="gap-2">
-            <Share2 className="h-4 w-4" />
-            Share
+        <div className="report-tools">
+          <Button variant="ghost" size="sm" onClick={handleCopyLink} className="gap-2">
+            <Link2 className="h-4 w-4" />
+            Copy link
           </Button>
           <Button variant="outline" size="sm" onClick={handleExportPdf} className="gap-2">
             <Download className="h-4 w-4" />
-            Export
+            Export PDF
           </Button>
-          {/* <Button variant="outline" size="sm" className="gap-2">
-            <Bookmark className="h-4 w-4" />
-            Save
-          </Button> */}
-          {/* <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setShowStats(!showStats)}
-            className="gap-2"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-            Stats
-          </Button> */}
         </div>
       </div>
 
-      {/* Report Header */}
-      <Card className="p-6 mb-8 bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm border-0 shadow-lg">
-        <div className="space-y-4">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            The gist of what was found on "{report.refined_topic || report.topic}"
-          </h1>
-          
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary">{report.user_preferences.focus}</Badge>
-            <Badge variant="secondary">Depth: {report.user_preferences.depth}/3</Badge>
-            <Badge variant="secondary">{report.user_preferences.tone}</Badge>
-          </div>
-          
-          <p className="text-sm text-muted-foreground">
-            Generated on {new Date(report.timestamp).toLocaleDateString()}
-            {sourceCount !== undefined && ` • ${sourceCount} ${sourceCount === 1 ? "source" : "sources"} selected`}
-          </p>
+      <header className="report-heading">
+        <h1>{report.refined_topic || report.topic}</h1>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="secondary">{report.user_preferences.focus}</Badge>
+          <Badge variant="secondary">Depth: {report.user_preferences.depth}/3</Badge>
+          <Badge variant="secondary">{report.user_preferences.tone}</Badge>
         </div>
-      </Card>
+        <p className="text-sm text-muted-foreground">
+          Generated on {new Date(report.timestamp).toLocaleDateString()}
+          {sourceCount !== undefined && ` • ${sourceCount} ${sourceCount === 1 ? "source" : "sources"} selected`}
+        </p>
+      </header>
 
-      {/* Nerd Stats */}
-      {showStats && sourceCount !== undefined && (
-        <div className="mb-8">
-          <NerdStats 
-            searchQueries={report.final_report_data.search.map((item: any) => item.query || item.title || JSON.stringify(item))}
-            sourcesAnalyzed={report.final_report_data.search.length}
-            sourcesSelected={sourceCount}
-            processingTime={0} // Placeholder, as this is not available in the current backend response
-            generatedAt={report.timestamp}
-            sources={report.final_report_data.selection.map((item: any) => ({ title: item.title, url: item.link, domain: new URL(item.link).hostname }))}
-          />
-        </div>
-      )}
-
-      {/* Report Content */}
-      <div id="report-content" className="mb-8">
+      <div id="report-content">
         <ReportContent content={report.final_report_data.editing} />
       </div>
-
-      {/* Related Topics */}
-      <RelatedTopics 
-        topics={[]} // Related topics are not available in the current backend response
-        onTopicSelect={(topic) => {
-          
-          navigate("/", { state: { selectedTopic: topic } })
-        }}
-      />
-    </div>
+    </article>
   )
 }

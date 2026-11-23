@@ -61,8 +61,8 @@ export function ProcessingDashboard({ topic, currentStep, onCancel }: Processing
   }, [currentStep])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-slate-900 dark:via-blue-900/20 dark:to-purple-900/20 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl p-8 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-0 shadow-2xl">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-2xl p-8 bg-white/80 backdrop-blur-sm border-0 shadow-2xl">
         <div className="space-y-8">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -93,17 +93,17 @@ export function ProcessingDashboard({ topic, currentStep, onCancel }: Processing
                 key={step.id}
                 className={`flex items-center gap-4 p-4 rounded-lg transition-all duration-300 ${
                   index === currentStepIndex
-                    ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
+                    ? 'bg-blue-50 border border-blue-200'
                     : index < currentStepIndex
-                    ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                    ? 'bg-green-50 border border-green-200'
                     : 'bg-muted/30'
                 }`}
               >
                 <div className={`p-2 rounded-full ${
                   index === currentStepIndex
-                    ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600'
+                    ? 'bg-blue-100 text-blue-600'
                     : index < currentStepIndex
-                    ? 'bg-green-100 dark:bg-green-900/40 text-green-600'
+                    ? 'bg-green-100 text-green-600'
                     : 'bg-muted text-muted-foreground'
                 }`}>
                   {step.icon}

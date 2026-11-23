@@ -1,6 +1,6 @@
 export function TermsOfServicePage() {
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="info-page">
       <h1 className="text-3xl font-bold mb-4">Terms of Service</h1>
       <div className="space-y-4 text-muted-foreground">
         <p>Last updated: Aug 19, 2025</p>

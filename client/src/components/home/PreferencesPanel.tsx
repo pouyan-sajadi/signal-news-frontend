@@ -43,7 +43,7 @@ export function PreferencesPanel({ preferences, onChange }: PreferencesPanelProp
 
   return (
     <TooltipProvider>
-      <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-border/50 rounded-lg">
+      <div className="bg-white/50 backdrop-blur-sm border border-border/50 rounded-lg">
         <div className="px-3">
           <Button
             type="button"

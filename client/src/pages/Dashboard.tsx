@@ -102,7 +102,10 @@ export function Dashboard({ onReady }: { onReady: (ready: boolean) => void }) {
 
       <section id="dashboard-section" className="daily-scan" tabIndex={-1} aria-labelledby="scan-title" aria-busy={isLoading}>
         <div className="section-heading">
-          <h2 id="scan-title">Tech dashboard</h2>
+          <div>
+            <h2 id="scan-title">Tech dashboard</h2>
+            <p className="section-subheading">See what’s trending in code, new products, and tech news.</p>
+          </div>
           <DashboardDate createdAt={snapshot?.createdAt ?? null} />
         </div>
         {isLoading && <p className="module-empty" role="status">Loading the dashboard…</p>}

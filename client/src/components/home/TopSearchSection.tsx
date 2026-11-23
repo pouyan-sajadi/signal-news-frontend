@@ -76,7 +76,10 @@ export function TopSearchSection({
 
   return (
     <section id="top-search-section" className="search-section" tabIndex={-1} aria-labelledby="report-entry-title">
-      <div className="search-intro"><h2 id="report-entry-title">Create a report</h2></div>
+      <div className="search-intro">
+        <h2 id="report-entry-title">Create a report</h2>
+        <p className="section-subheading">Ask a question and get a report with sources.</p>
+      </div>
       <div className="search-form-wrap">
         {searchError && (
           <p role="alert" className="mb-3 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-foreground">
@@ -93,7 +96,7 @@ export function TopSearchSection({
             onPreferencesChange={setPreferences}
           />
         ) : (
-          <Card className="p-6 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-0 shadow-lg mx-auto">
+          <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-lg mx-auto">
             <div className="space-y-6">
               {/* Header */}
               <div className="flex items-center justify-between">
@@ -114,7 +117,7 @@ export function TopSearchSection({
                   <span>Progress</span>
                   <span>{Math.round(progress)}%</span>
                 </div>
-                <Progress value={progress} className="h-2 bg-white dark:bg-slate-700" indicatorClassName="bg-purple-600" />
+                <Progress value={progress} className="h-2 bg-white" indicatorClassName="bg-purple-600" />
               </div>
 
               {/* Steps */}
@@ -123,16 +126,16 @@ export function TopSearchSection({
                   <div
                     key={step.id}
                     className={`flex items-center gap-3 p-3 rounded-lg transition-all duration-300 ${index === currentStepIndex
-                        ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
+                        ? 'bg-blue-50 border border-blue-200'
                         : index < currentStepIndex
-                          ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                          ? 'bg-green-50 border border-green-200'
                           : 'bg-muted/30'
                       }`}
                   >
                     <div className={`p-2 rounded-full ${index === currentStepIndex
-                        ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600'
+                        ? 'bg-blue-100 text-blue-600'
                         : index < currentStepIndex
-                          ? 'bg-green-100 dark:bg-green-900/40 text-green-600'
+                          ? 'bg-green-100 text-green-600'
                           : 'bg-muted text-muted-foreground'
                       }`}>
                       {step.icon}

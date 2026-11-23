@@ -24,7 +24,7 @@ export function LayoutWithSidebar({ children, reportCount, setReportCount }: Lay
     <div className="flex min-h-screen bg-background">
       {/* Desktop Sidebar */}
       <aside
-        className={`history-rail relative flex-col h-screen bg-card border-r border-border transition-all duration-300 ease-in-out w-64 p-4 ${isDesktopSidebarOpen ? 'is-open' : ''}`}
+        className={`history-rail relative flex-col h-screen bg-muted w-64 p-4 ${isDesktopSidebarOpen ? 'is-open' : ''}`}
       >
         <div className="flex items-center justify-between mb-4">
           {isDesktopSidebarOpen && (
@@ -36,6 +36,7 @@ export function LayoutWithSidebar({ children, reportCount, setReportCount }: Lay
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Close report history"
             onClick={() => setIsDesktopSidebarOpen(!isDesktopSidebarOpen)}
             className="ml-auto"
           >

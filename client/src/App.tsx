@@ -1,5 +1,4 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
-import { ThemeProvider } from "./components/ui/theme-provider"
 import { Toaster } from "./components/ui/toaster"
 import { LayoutWithSidebar } from "./components/LayoutWithSidebar"
 import { HomePage } from "./pages/HomePage"
@@ -15,7 +14,7 @@ function App() {
   const [reportCount, setReportCount] = useState(0);
 
   return (
-    <ThemeProvider defaultTheme="light" storageKey="ui-theme">
+    <>
       <Router>
         <Analytics />
         <Routes>
@@ -30,7 +29,7 @@ function App() {
         </Routes>
       </Router>
       <Toaster />
-    </ThemeProvider>
+    </>
   )
 }
 

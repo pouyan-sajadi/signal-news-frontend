@@ -3,8 +3,8 @@ import { Link } from "react-router-dom";
 
 export function Footer() {
   return (
-    <footer className="w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t mt-12 py-8">
-      <div className="container flex flex-col md:flex-row items-center justify-between text-sm text-muted-foreground space-y-4 md:space-y-0">
+    <footer className="signal-footer">
+      <div className="page-width mx-auto flex flex-col md:flex-row items-center justify-between text-sm text-muted-foreground gap-4">
         <div>
           <p>&copy; {new Date().getFullYear()} The Signal. All rights reserved.</p>
         </div>
