@@ -69,8 +69,9 @@ export function HomePage() {
   const navigationType = useNavigationType()
   const [dashboardReady, setDashboardReady] = useState(false)
   const anchor = location.hash.slice(1)
+  const focusReportTopic = anchor === 'top-search-section' && location.state?.focusReportTopic === true
   const contentAboveAnchorCanShift = anchor === 'dashboard-section' || anchor === 'top-search-section'
-  const canScrollToAnchor = dashboardReady || !contentAboveAnchorCanShift
+  const canScrollToAnchor = focusReportTopic || dashboardReady || !contentAboveAnchorCanShift
 
   useEffect(() => {
     if (!canScrollToAnchor) return
@@ -78,14 +79,15 @@ export function HomePage() {
     const frame = requestAnimationFrame(() => {
       const target = document.getElementById(anchor)
       if (target) {
-        target.focus({ preventScroll: true })
+        const focusTarget = focusReportTopic ? document.getElementById('report-topic') ?? target : target
+        focusTarget.focus({ preventScroll: true })
         target.scrollIntoView({ behavior: navigationType === 'POP' ? 'instant' : 'auto' })
       } else {
         window.scrollTo({ top: 0, behavior: 'instant' })
       }
     })
     return () => cancelAnimationFrame(frame)
-  }, [anchor, canScrollToAnchor, location.key, navigationType])
+  }, [anchor, canScrollToAnchor, focusReportTopic, location.key, navigationType])
 
   useEffect(() => {
     if (!pendingReport) return

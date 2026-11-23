@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useRef, useState } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { ReportHistory } from './home/ReportHistory';
 import { Button } from './ui/button';
 import { PanelLeftOpen, PanelLeftClose, History } from 'lucide-react';
@@ -16,6 +16,9 @@ interface LayoutWithSidebarProps {
 export function LayoutWithSidebar({ children, reportCount, setReportCount }: LayoutWithSidebarProps) {
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const openFormAfterClose = useRef(false);
+  const navigate = useNavigate();
+  const openReportForm = () => navigate('/#top-search-section', { state: { focusReportTopic: true } });
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -41,18 +44,40 @@ export function LayoutWithSidebar({ children, reportCount, setReportCount }: Lay
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          <ReportHistory isSidebar={true} isSidebarOpen={isDesktopSidebarOpen} reportCount={reportCount} />
+          <ReportHistory
+            isSidebar
+            isSidebarOpen={isDesktopSidebarOpen}
+            reportCount={reportCount}
+            onOpenReportForm={openReportForm}
+          />
         </div>
       </aside>
 
       {/* Mobile Sidebar (Sheet) */}
       <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
-        <SheetContent side="left" className="w-64 p-4" aria-describedby={undefined}>
+        <SheetContent
+          side="left"
+          className="w-64 p-4"
+          aria-describedby={undefined}
+          onCloseAutoFocus={event => {
+            if (!openFormAfterClose.current) return;
+            event.preventDefault();
+            openFormAfterClose.current = false;
+            openReportForm();
+          }}
+        >
           <div className="flex items-center justify-between mb-4">
             <SheetTitle className="display-type">Report history</SheetTitle>
           </div>
           <div className="flex-1 overflow-y-auto">
-            <ReportHistory isSidebar={true} isSidebarOpen={true} reportCount={reportCount} />
+            <ReportHistory
+              isSidebar
+              reportCount={reportCount}
+              onOpenReportForm={() => {
+                openFormAfterClose.current = true;
+                setIsMobileSidebarOpen(false);
+              }}
+            />
           </div>
         </SheetContent>
       </Sheet>
