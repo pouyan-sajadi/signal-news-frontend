@@ -28,7 +28,7 @@ export function NerdStats({
   const [isExpanded, setIsExpanded] = useState(false)
 
   return (
-    <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-0 shadow-md">
+    <Card className="bg-white/50 backdrop-blur-sm border-0 shadow-md">
       <div className="p-4">
         <Button
           variant="ghost"
@@ -51,25 +51,25 @@ export function NerdStats({
           <div className="mt-6 space-y-6">
             {/* Processing Metrics */}
             <div className="grid md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <Search className="h-6 w-6 text-blue-600 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-blue-600">{searchQueries.length}</div>
                 <div className="text-xs text-muted-foreground">Search Queries</div>
               </div>
 
-              <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <div className="text-center p-4 bg-green-50 rounded-lg">
                 <FileText className="h-6 w-6 text-green-600 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-green-600">{sourcesAnalyzed}</div>
                 <div className="text-xs text-muted-foreground">Sources Analyzed</div>
               </div>
 
-              <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+              <div className="text-center p-4 bg-purple-50 rounded-lg">
                 <CheckCircle className="h-6 w-6 text-purple-600 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-purple-600">{sourcesSelected}</div>
                 <div className="text-xs text-muted-foreground">Sources Selected</div>
               </div>
 
-              <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+              <div className="text-center p-4 bg-orange-50 rounded-lg">
                 <Clock className="h-6 w-6 text-orange-600 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-orange-600">{processingTime}s</div>
                 <div className="text-xs text-muted-foreground">Processing Time</div>

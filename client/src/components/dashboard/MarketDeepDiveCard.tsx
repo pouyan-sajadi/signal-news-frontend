@@ -25,7 +25,7 @@ function InlineCitations({ ids, sources }: { ids: string[]; sources: Map<string,
             rel="noopener noreferrer"
             aria-label={`Source ${source.number}: ${source.title}`}
             title={source.title}
-            className="font-medium text-indigo-700 underline underline-offset-2 dark:text-indigo-300"
+            className="font-medium text-indigo-700 underline underline-offset-2"
           >
             {source.number}
           </a>
@@ -45,13 +45,13 @@ export function MarketDeepDiveCard({ brief }: { brief: MarketDeepDive }) {
 
   return (
     <Card className="market-card" aria-label="Market deep dive">
-      <header className="bg-gradient-to-br from-indigo-100 to-blue-50 px-5 py-5 sm:px-7 sm:py-6 dark:from-indigo-950 dark:to-slate-900">
-        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+      <header className="bg-gradient-to-br from-indigo-100 to-blue-50 px-5 py-5 sm:px-7 sm:py-6">
+        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-indigo-700">
           <Radio className="h-4 w-4" aria-hidden="true" />
           Today’s story
         </p>
         <h2 id="market-title" className="mt-2 max-w-3xl text-2xl font-bold tracking-tight sm:text-3xl">{brief.headline}</h2>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-700 sm:text-base dark:text-slate-200">
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-700 sm:text-base">
           {brief.summary}
           <InlineCitations ids={brief.summary_source_ids} sources={sources} />
         </p>

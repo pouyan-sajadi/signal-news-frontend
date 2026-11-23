@@ -51,10 +51,10 @@ export function UserProfile() {
           height={40}
           className="rounded-full cursor-pointer"
         />
-        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <button
             onClick={handleSignOut}
-            className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
           >
             Sign Out
           </button>

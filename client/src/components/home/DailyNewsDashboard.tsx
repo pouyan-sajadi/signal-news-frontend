@@ -86,18 +86,18 @@ export function DailyNewsDashboard() {
 
   const getCategoryColor = (category: string) => {
     const colors = {
-      Technology: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
-      Environment: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
-      Finance: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400",
-      Science: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400",
-      Energy: "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400"
+      Technology: "bg-blue-100 text-blue-800",
+      Environment: "bg-green-100 text-green-800",
+      Finance: "bg-yellow-100 text-yellow-800",
+      Science: "bg-purple-100 text-purple-800",
+      Energy: "bg-orange-100 text-orange-800"
     }
-    return colors[category as keyof typeof colors] || "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
+    return colors[category as keyof typeof colors] || "bg-gray-100 text-gray-800"
   }
 
   if (loading) {
     return (
-      <Card className="p-6 bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm border-0 shadow-lg">
+      <Card className="p-6 bg-white/70 backdrop-blur-sm border-0 shadow-lg">
         <div className="animate-pulse space-y-4">
           <div className="flex items-center gap-2">
             <div className="h-5 w-5 bg-muted rounded"></div>
@@ -116,7 +116,7 @@ export function DailyNewsDashboard() {
   }
 
   return (
-    <Card className="p-6 bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm border-0 shadow-lg">
+    <Card className="p-6 bg-white/70 backdrop-blur-sm border-0 shadow-lg">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -136,7 +136,7 @@ export function DailyNewsDashboard() {
             {news.map((item) => (
               <div
                 key={item.id}
-                className="p-4 rounded-lg bg-white/50 dark:bg-slate-700/50 border border-border/50 hover:bg-white/70 dark:hover:bg-slate-700/70 transition-colors group"
+                className="p-4 rounded-lg bg-white/50 border border-border/50 hover:bg-white/70 transition-colors group"
               >
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-3">

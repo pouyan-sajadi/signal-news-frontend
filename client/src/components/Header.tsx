@@ -2,7 +2,6 @@ import { History, Menu } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import { Button } from './ui/button'
-import { ThemeToggle } from './ui/theme-toggle'
 import { UserProfile } from './UserProfile'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 
@@ -38,7 +37,6 @@ export function Header({ isDesktopSidebarOpen, setIsDesktopSidebarOpen, setIsMob
               onClick={() => setIsDesktopSidebarOpen(!isDesktopSidebarOpen)}>
               <History size={18} aria-hidden="true" />
             </Button>
-            <ThemeToggle />
           </div>
           <UserProfile />
           <div className="header-mobile-tools">
@@ -54,7 +52,6 @@ export function Header({ isDesktopSidebarOpen, setIsDesktopSidebarOpen, setIsMob
                     setIsMobileSidebarOpen(true)
                   }}>Report history</Button>
                   <Link to="/about" onClick={() => setMenuOpen(false)}>About</Link>
-                  <ThemeToggle />
                 </div>
               </SheetContent>
             </Sheet>

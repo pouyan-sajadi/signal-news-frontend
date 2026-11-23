@@ -73,7 +73,7 @@ export function GenerateReport({
       ]
 
     return (
-        <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700 max-w-4xl mx-auto">
+        <div className="mt-12 pt-8 border-t border-gray-200 max-w-4xl mx-auto">
             <div className="text-center mb-8">
                 <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">
                     Generate News Report
@@ -95,7 +95,7 @@ export function GenerateReport({
                     />
                 </>
             ) : (
-                <Card className="p-6 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-0 shadow-lg mx-auto">
+                <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-lg mx-auto">
                     <div className="space-y-6">
                         {/* Header */}
                         <div className="flex items-center justify-between">
@@ -116,7 +116,7 @@ export function GenerateReport({
                                 <span>Progress</span>
                                 <span>{Math.round(progress)}%</span>
                             </div>
-                            <Progress value={progress} className="h-2 bg-white dark:bg-slate-700" indicatorClassName="bg-purple-600" />
+                            <Progress value={progress} className="h-2 bg-white" indicatorClassName="bg-purple-600" />
                         </div>
 
                         {/* Steps */}
@@ -125,16 +125,16 @@ export function GenerateReport({
                                 <div
                                     key={step.id}
                                     className={`flex items-center gap-3 p-3 rounded-lg transition-all duration-300 ${index === currentStepIndex
-                                            ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
+                                            ? 'bg-blue-50 border border-blue-200'
                                             : index < currentStepIndex
-                                                ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                                                ? 'bg-green-50 border border-green-200'
                                                 : 'bg-muted/30'
                                         }`}
                                 >
                                     <div className={`p-2 rounded-full ${index === currentStepIndex
-                                            ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600'
+                                            ? 'bg-blue-100 text-blue-600'
                                             : index < currentStepIndex
-                                                ? 'bg-green-100 dark:bg-green-900/40 text-green-600'
+                                                ? 'bg-green-100 text-green-600'
                                                 : 'bg-muted text-muted-foreground'
                                         }`}>
                                         {step.icon}
