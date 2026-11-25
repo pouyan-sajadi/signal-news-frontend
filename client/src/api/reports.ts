@@ -19,10 +19,11 @@ export interface FinalReportData {
 }
 
 export const reportSteps = ['search', 'profiling', 'selection', 'synthesis', 'editing'] as const;
+export type ReportStep = typeof reportSteps[number];
 
 type ReportProgress = {
   status: 'running';
-  step: typeof reportSteps[number];
+  step: ReportStep;
   refined_topic?: string | null;
 };
 

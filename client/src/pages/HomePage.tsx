@@ -5,6 +5,7 @@ import { HeroSection } from "../components/home/HeroSection"
 import { TopSearchSection } from "../components/home/TopSearchSection";
 
 import { reportSteps, ReportSearchError, startReport, waitForReport } from "../api/reports"
+import type { ReportStep } from "../api/reports"
 import { saveHistory } from "../api/history"
 import type { Report } from "./ReportPage"
 
@@ -61,7 +62,7 @@ export function HomePage() {
   const [connectionInterrupted, setConnectionInterrupted] = useState(false)
   const [searchError, setSearchError] = useState("")
   const [refinedTopic, setRefinedTopic] = useState("")
-  const [currentStepIndex, setCurrentStepIndex] = useState(0)
+  const [currentStep, setCurrentStep] = useState<ReportStep | null>(null)
   const trackingController = useRef<AbortController | null>(null)
   const navigate = useNavigate()
   const { setReportCount } = useOutletContext<OutletContext>();
@@ -98,8 +99,7 @@ export function HomePage() {
     waitForReport(jobId, controller.signal, update => {
       setConnectionInterrupted(update === null)
       if (!update) return
-      const index = reportSteps.indexOf(update.step)
-      if (index !== -1) setCurrentStepIndex(index)
+      if (reportSteps.includes(update.step)) setCurrentStep(update.step)
       if (update.refined_topic) setRefinedTopic(update.refined_topic)
     })
       .then(finalReport => {
@@ -146,7 +146,7 @@ export function HomePage() {
     setIsStarting(true)
     setConnectionInterrupted(false)
     setRefinedTopic("")
-    setCurrentStepIndex(0)
+    setCurrentStep(null)
 
     try {
       const jobId = await startReport(searchTopic, preferences)
@@ -183,8 +183,7 @@ export function HomePage() {
         handleGenerateReport={handleGenerateReport}
         searchError={searchError}
         connectionInterrupted={connectionInterrupted}
-        progress={currentStepIndex / reportSteps.length * 100}
-        currentStepIndex={currentStepIndex}
+        currentStep={currentStep}
         refinedTopic={refinedTopic}
         onStopWaiting={handleStopWaiting}
       />

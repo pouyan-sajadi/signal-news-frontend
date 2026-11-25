@@ -51,11 +51,15 @@ export function TopicInput({
           onChange={onPreferencesChange}
         />
 
-        <div className="flex justify-end">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <p id="report-timing-note" className="text-sm text-muted-foreground">
+            Reports can take several minutes.
+          </p>
           <Button
             type="submit"
             size="lg"
-            className="px-5"
+            className="ml-auto px-5"
+            aria-describedby="report-timing-note"
             disabled={!value.trim() || disabled}
           >
             {disabled ? "Generating..." : "Generate report"}
