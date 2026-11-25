@@ -1,0 +1,127 @@
+.report-progress {
+  padding: clamp(14px, 3.7vw, 24px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: hsl(var(--card));
+  color: var(--ink);
+}
+
+.report-progress__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.report-progress__heading {
+  flex: 1 1 11rem;
+  min-width: 0;
+}
+
+.report-progress__heading h3 {
+  font: 500 clamp(23px, 4vw, 29px)/1.12 var(--display);
+  letter-spacing: -.025em;
+}
+
+.report-progress__topic {
+  margin-top: 5px;
+  color: hsl(var(--muted-foreground));
+  font-size: .875rem;
+  overflow-wrap: anywhere;
+}
+
+.report-progress__stages {
+  --marker-size: 32px;
+  --marker-gap: 9px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 24px 0 17px;
+  padding: 0;
+  list-style: none;
+}
+
+.report-progress__stage {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  color: hsl(var(--muted-foreground));
+  font-size: .75rem;
+  font-weight: 550;
+}
+
+.report-progress__stage:not(:last-child)::after {
+  position: absolute;
+  top: calc(var(--marker-size) / 2);
+  left: calc(50% + var(--marker-size) / 2 + var(--marker-gap));
+  width: calc(100% - var(--marker-size) - 2 * var(--marker-gap));
+  height: 1px;
+  background: var(--line);
+  content: "";
+}
+
+.report-progress__stage[data-state="complete"]::after {
+  background: hsl(var(--primary) / .48);
+}
+
+.report-progress__marker {
+  position: relative;
+  display: grid;
+  width: var(--marker-size);
+  height: var(--marker-size);
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: hsl(var(--background));
+}
+
+.report-progress__marker svg { width: 15px; height: 15px; }
+
+.report-progress__stage[data-state="complete"] .report-progress__marker {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: white;
+}
+
+.report-progress__stage[data-state="current"] {
+  color: var(--navy);
+  font-weight: 700;
+}
+
+.report-progress__stage[data-state="current"] .report-progress__marker {
+  border-color: var(--navy);
+  background: var(--signal);
+}
+
+.report-progress__pulse {
+  position: absolute;
+  inset: -1px;
+  border: 1px solid var(--navy);
+  border-radius: inherit;
+  animation: report-stage-pulse 1.6s ease-out 3;
+  animation-fill-mode: forwards;
+}
+
+@keyframes report-stage-pulse {
+  0% { opacity: .55; transform: scale(1); }
+  75%, 100% { opacity: 0; transform: scale(1.42); }
+}
+
+.report-progress__status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  padding: 10px 12px;
+  border-inline-start: 2px solid var(--signal);
+  background: hsl(var(--muted) / .48);
+  font-size: .875rem;
+}
+
+.report-progress__status p:first-child { font-weight: 650; }
+.report-progress__status p + p, .report-progress__note { color: hsl(var(--muted-foreground)); }
+.report-progress__note { margin-top: 12px; font-size: .8125rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .report-progress__pulse { display: none; }
+}
