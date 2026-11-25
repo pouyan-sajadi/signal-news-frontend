@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-18",
+  "launches": [
+    {
+      "rank": 1,
+      "title": "S.Space",
+      "url": "https://www.producthunt.com/posts/s-space?ref=mcp",
+      "points": 392,
+      "tags": ["Team collaboration software", "AI Workflow Automation"]
+    },
+    {
+      "rank": 2,
+      "title": "Bluedot Phone Calls",
+      "url": "https://www.producthunt.com/posts/bluedot-phone-calls?ref=mcp",
+      "points": 322,
+      "tags": ["Meeting software", "AI notetakers"]
+    },
+    {
+      "rank": 3,
+      "title": "Toone",
+      "url": "https://www.producthunt.com/posts/toone-4?ref=mcp",
+      "points": 301,
+      "tags": ["Automation tools", "AI Agents"]
+    }
+  ]
+}

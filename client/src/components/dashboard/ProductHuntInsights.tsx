@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ArrowUpRight, ChevronDown } from 'lucide-react'
-import type { LaunchCategory } from '@/api/dashboard'
+import type { LaunchCategory, ProductHuntLeaderboard } from '@/api/dashboard'
 
 type Rect = { left: number; top: number; width: number; height: number }
 type Tile = Rect & { category: LaunchCategory }
@@ -12,6 +12,33 @@ const shortLabels: Record<string, string> = {
   'Data & Analytics': 'Analytics',
 }
 const colors = ['#cbd9ff', '#dbe7ff', '#bcd4ea', '#d4d7f2', '#d5e8e8', '#e0e8f8']
+const leaderboardDate = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeZone: 'America/Los_Angeles' })
+const pointCount = new Intl.NumberFormat('en')
+
+export function ProductHuntTopLaunches({ leaderboard }: { leaderboard: ProductHuntLeaderboard }) {
+  const date = leaderboardDate.format(new Date(`${leaderboard.date}T12:00:00Z`))
+  return (
+    <section className="product-hunt-top" aria-labelledby="product-hunt-top-title">
+      <h4 id="product-hunt-top-title">{date === leaderboardDate.format() ? 'Top 3 today' : `Top 3 on ${date}`}</h4>
+      <ol className="product-hunt-ranks" role="list">
+        {leaderboard.launches.map(({ rank, title, url, points, tags }) => (
+          <li key={rank}>
+            <span className="product-hunt-rank"><span className="sr-only">Rank </span>#{rank}</span>
+            <div className="product-hunt-launch">
+              <a href={url} target="_blank" rel="noopener noreferrer">{title}<ArrowUpRight size={14} aria-hidden="true" /></a>
+              {tags.length > 0 && (
+                <ul className="product-hunt-tags" aria-label="Product Hunt tags">
+                  {tags.map(tag => <li key={tag}>{tag}</li>)}
+                </ul>
+              )}
+            </div>
+            {points !== null && <span className="product-hunt-points">{pointCount.format(points)} {points === 1 ? 'point' : 'points'}</span>}
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
 
 function packTiles(items: LaunchCategory[], rect: Rect): Tile[] {
   if (items.length <= 1) return items.map(category => ({ ...rect, category }))

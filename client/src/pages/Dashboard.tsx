@@ -4,7 +4,7 @@ import { getDashboardData, type NewsBriefStory } from '@/api/dashboard'
 import { GitHubTrending } from '@/components/dashboard/GitHubTrending'
 import { MarketDeepDiveCard } from '@/components/dashboard/MarketDeepDiveCard'
 import { MarketPredictions } from '@/components/dashboard/MarketPredictions'
-import { ProductHuntInsights } from '@/components/dashboard/ProductHuntInsights'
+import { ProductHuntInsights, ProductHuntTopLaunches } from '@/components/dashboard/ProductHuntInsights'
 
 type Snapshot = Awaited<ReturnType<typeof getDashboardData>>
 
@@ -115,7 +115,8 @@ export function Dashboard({ onReady }: { onReady: (ready: boolean) => void }) {
             <DashboardPanel title="GitHub Trending" hint="Activity by language">
               <GitHubTrending languages={snapshot.languages} />
             </DashboardPanel>
-            <DashboardPanel title="Product Hunt" hint="Launches by category">
+            <DashboardPanel title="Product Hunt" hint={snapshot.productHuntLeaderboard ? undefined : 'Launches by category'}>
+              {snapshot.productHuntLeaderboard && <ProductHuntTopLaunches leaderboard={snapshot.productHuntLeaderboard} />}
               <ProductHuntInsights categories={snapshot.launchCategories} />
             </DashboardPanel>
             <div className="scan-wide">

@@ -265,6 +265,24 @@
 .home-flow section[tabindex="-1"]:focus { outline: none !important; }
 
 .chart-body { padding: 12px 18px 9px; }
+.product-hunt-top { margin-inline: 18px; padding-block: 12px 4px; border-bottom: 1px solid #dce4ee; }
+.product-hunt-top h4 { color: var(--ink); font-size: 14px; font-weight: 650; }
+.product-hunt-ranks > li {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  padding-block: 9px;
+}
+.product-hunt-ranks > li + li { border-top: 1px solid #e1e7ef; }
+.product-hunt-rank, .product-hunt-points { font-variant-numeric: tabular-nums; }
+.product-hunt-rank { color: #2456c9; font-size: 13px; font-weight: 650; }
+.product-hunt-points { color: #46576b; font-size: 12px; font-weight: 620; white-space: nowrap; }
+.product-hunt-launch a { display: inline-flex; align-items: center; gap: 4px; color: var(--ink); font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
+.product-hunt-launch a svg { flex: none; color: #2456c9; }
+.product-hunt-launch a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.product-hunt-tags { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; }
+.product-hunt-tags li { border-radius: 4px; padding: 1px 5px; background: #e4ebf5; color: #3a4d62; font-size: 11px; overflow-wrap: anywhere; }
 .metric-switch {
   display: inline-flex;
   padding: 2px;
