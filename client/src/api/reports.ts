@@ -32,10 +32,11 @@ type ReportStatus = ReportProgress | {
   data: FinalReportData;
 } | {
   status: 'error';
-  code: 'no_articles' | 'timed_out' | 'unavailable';
+  code: keyof typeof failureMessages;
 };
 
 const failureMessages = {
+  invalid_topic: "We couldn’t identify a news topic. Try a different topic.",
   no_articles: "We couldn’t find recent coverage for that topic. Try a broader search.",
   timed_out: "Your report took too long to finish. Try a narrower topic or try again.",
   unavailable: "We couldn’t finish your report. Try again in a moment.",
